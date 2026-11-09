@@ -48,7 +48,7 @@ class ThumbnailService {
     return this.strips.get(key);
   }
 
-  requestStrip(key: string, photo: string, layers: () => RenderLayer[], frames = 16) {
+  requestStrip(key: string, photo: string, layers: () => RenderLayer[], frames = 24) {
     const k = `strip:${key}`;
     if (this.strips.has(key) || this.queue.some((q) => q.key === k)) return;
     this.queue.unshift({ key: k, photo, layers, frames });

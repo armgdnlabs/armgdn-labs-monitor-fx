@@ -63,7 +63,7 @@ interface CardProps {
   layers: () => RenderLayer[];
   name: string;
   sub?: string;
-  /** Animated items scrub through their loop on hover; still ones show the untouched photo. */
+  /** Animated items play their loop on hover; still ones show the untouched photo. */
   moves?: boolean;
   favorite?: boolean;
   onFavorite?: () => void;
@@ -77,11 +77,17 @@ interface CardProps {
 function Card({ thumbKey, photo, layers, name, sub, moves, favorite, onFavorite, onShare, onClick, cover, extra, title }: CardProps) {
   const [ref, visible] = useVisible<HTMLDivElement>();
   const [hover, setHover] = useState(false);
-  const [scrub, setScrub] = useState(0);
+  const [tick, setTick] = useState(0);
   const rendered = useThumbnail(thumbKey, photo, layers, visible && !cover);
   const strip = useThumbStrip(thumbKey, photo, layers, hover && !!moves && !cover);
   const still = cover ?? rendered;
-  const frame = hover && moves && strip?.length ? strip[Math.min(strip.length - 1, Math.floor(scrub * strip.length))] : undefined;
+  // Animated items play their loop start to finish while hovered.
+  useEffect(() => {
+    if (!hover || !moves || !strip?.length) return;
+    const id = window.setInterval(() => setTick((n) => n + 1), 1000 / 12);
+    return () => window.clearInterval(id);
+  }, [hover, moves, strip]);
+  const frame = hover && moves && strip?.length ? strip[tick % strip.length] : undefined;
   const showOriginal = hover && !moves && !cover;
   return (
     <div ref={ref} className="group min-w-0" title={title}>
@@ -89,8 +95,7 @@ function Card({ thumbKey, photo, layers, name, sub, moves, favorite, onFavorite,
         className="relative w-full aspect-[4/5] overflow-hidden border border-line group-hover:border-fg cursor-pointer"
         style={{ background: "rgb(var(--bg-raised))" }}
         onPointerEnter={() => setHover(true)}
-        onPointerLeave={() => { setHover(false); setScrub(0); }}
-        onPointerMove={(e) => { const r = e.currentTarget.getBoundingClientRect(); setScrub(Math.min(0.999, Math.max(0, (e.clientX - r.left) / r.width))); }}
+        onPointerLeave={() => { setHover(false); setTick(0); }}
         onClick={onClick}
         role="button"
         tabIndex={0}
@@ -107,11 +112,7 @@ function Card({ thumbKey, photo, layers, name, sub, moves, favorite, onFavorite,
             <span className="absolute left-1.5 bottom-1.5 tag-solid">Original</span>
           </>
         )}
-        {hover && moves && (
-          <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-void/40">
-            <div className="h-full bg-signal" style={{ width: `${scrub * 100}%` }} />
-          </div>
-        )}
+        {hover && moves && !strip && <span className="absolute left-1.5 bottom-1.5 tag-solid">Loading<span className="blink">_</span></span>}
         {onShare && (
           <button className="card-btn left-1 top-1" title="Copy share link" onClick={(e) => { e.stopPropagation(); onShare(); }}><Icon name="link" /></button>
         )}

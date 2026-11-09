@@ -132,39 +132,52 @@ void main() {
     id: "noise",
     name: "Noise",
     category: "Overlay",
-    description: "Sensor-style noise with luma and chroma components, a noise floor and per-tone response; static or refreshed at a set rate.",
-    keywords: "static grain texture overlay tv snow sensor iso",
+    description: "Photographic noise: Gaussian sensor noise with separate luma and chroma, soft film-grain clumps, TV static or coarse grain. Each frame is a fresh, independent field (it boils in place, never slides); speed 0 freezes it.",
+    keywords: "static grain texture overlay tv snow sensor iso film",
     preview: "portraits:2",
     animated: true,
     params: [
       hero("amount", "Amount", 0, 3, 0.9),
-      hero("size", "Size", 0.5, 3, 1),
-      hero("speed", "Speed (fps)", 0, 60, 0, 1),
+      hero("size", "Size", 0.25, 3, 0.6),
+      hero("speed", "Speed (fps)", 0, 60, 24, 1),
+      select("type", "Type", ["Sensor", "Film grain", "TV static", "Coarse"]),
       range("floor", "Floor", 0, 0.3, 0.02),
-      range("chroma", "Chroma", 0, 1, 0.8),
-      ...group("Response", [range("shadow", "Shadow", 0, 1, 1), range("midtone", "Mid-tone", 0, 1, 0.5), range("highlight", "Highlight", 0, 1, 0.8)]),
-      select("type", "Type", ["Sensor", "TV static", "Simplex", "Cellular", "Fibres"]),
+      range("chroma", "Chroma", 0, 1, 0.6),
+      ...group("Response", [range("shadow", "Shadow", 0, 1, 1), range("midtone", "Mid-tone", 0, 1, 0.6), range("highlight", "Highlight", 0, 1, 0.4)]),
     ],
     passes: single(`
-float n1(vec2 p, int t, float time) {
-  if (t == 0) return hash12(floor(p) + time * 71.0) + hash12(floor(p) * 1.37 + time * 17.0) - 1.0;
-  if (t == 1) return hash12(floor(p * vec2(1.0, 0.5)) + time * 71.0) * 2.0 - 1.0;
-  if (t == 2) return snoise(p * 0.08 + time);
-  if (t == 3) return worley(p * 0.05 + time).x * 2.0 - 1.0;
-  return smoothstep(0.4, 0.6, fbm(vec2(p.x * 0.01, p.y * 0.2) + time)) * 2.0 - 1.0;
+// Approximately Gaussian, zero-mean noise from four hashes (central limit).
+float gauss(vec2 p) { return (hash12(p) + hash12(p + 17.3) + hash12(p + 41.9) + hash12(p + 73.1) - 2.0) * 1.7; }
+// Smoothly interpolated Gaussian lattice: soft clumps like film grain or a sensor's
+// slightly blurred chroma.
+float soft(vec2 p) {
+  vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(gauss(i), gauss(i + vec2(1, 0)), f.x), mix(gauss(i + vec2(0, 1)), gauss(i + 1.0), f.x), f.y);
+}
+float field(vec2 p, int t) {
+  if (t == 0) return gauss(floor(p));
+  if (t == 1) return soft(p) * 0.75 + soft(p * 2.1 + 7.0) * 0.45;
+  if (t == 2) return gauss(floor(p * vec2(0.5, 1.0))) * 1.3;
+  return soft(p * 0.35) * 1.1 + gauss(floor(p)) * 0.3;
 }
 void main() {
   vec4 c = texture(uTex0, vUv);
+  // Size 1 ≈ one pixel at 1080p; the grain stays the same relative size at any export size.
   vec2 px = refCoord(vUv) / u_size;
-  float time = u_speed > 0.5 ? floor(uTime * u_speed) : 0.0;
-  time += uSeed;
+  float frame = u_speed > 0.5 ? floor(uTime * u_speed) : 0.0;
+  // Each frame jumps to an unrelated offset so the noise re-rolls in place instead of sliding.
+  vec2 jump = vec2(hash11(frame * 0.618 + uSeed), hash11(frame * 0.414 + uSeed + 3.0)) * 4096.0;
   int t = int(u_type + 0.5);
-  float l = n1(px, t, time);
-  vec3 ch = vec3(n1(px + 17.0, t, time), n1(px + 41.0, t, time), n1(px + 73.0, t, time));
+  float l = field(px + jump, t);
+  // Chroma noise is softer and coarser than luma, as on a real sensor.
+  vec2 cp = px * 0.5 + jump.yx;
+  vec3 ch = vec3(soft(cp), soft(cp + 31.0), soft(cp + 67.0));
+  ch -= dot(ch, vec3(0.333));
   float y = luma(c.rgb);
   float resp = mix(mix(u_shadow, u_midtone, smoothstep(0.0, 0.45, y)), u_highlight, smoothstep(0.55, 1.0, y));
-  vec3 n = mix(vec3(l), ch, u_chroma) * 0.12 * u_amount * resp;
-  vec3 o = c.rgb + n + u_floor * (vec3(l) * 0.5 + 0.5) * u_amount;
+  vec3 n = (vec3(l) + ch * u_chroma * 1.5) * 0.06 * u_amount * resp;
+  vec3 o = c.rgb + n + u_floor * u_amount * (0.5 + 0.5 * l) * 0.5;
+  if (t == 2) o = mix(c.rgb, vec3(l * 0.5 + 0.5), min(u_amount * 0.25, 1.0));
   fragColor = vec4(sat(o), c.a);
 }`),
   },
