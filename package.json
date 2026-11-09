@@ -33,9 +33,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/armgdn-labs/armgdn-labs-monitor-fx.git"
+    "url": "https://github.com/armgdnlabs/armgdn-labs-monitor-fx.git"
   },
-  "homepage": "https://armgdn-labs.github.io/armgdn-labs-monitor-fx/",
+  "homepage": "https://armgdnlabs.github.io/armgdn-labs-monitor-fx/",
   "keywords": [
     "webgl",
     "shaders",

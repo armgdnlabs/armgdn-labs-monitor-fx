@@ -122,7 +122,7 @@ function Card({ thumbKey, photo, layers, name, sub, moves, favorite, onFavorite,
         )}
         {extra}
       </div>
-      <div className="pt-1.5 min-h-[30px]">
+      <div className="pt-1.5 min-h-[30px] cursor-pointer" onClick={onClick}>
         <p className="truncate text-[11px] caps text-fg-2 group-hover:text-fg leading-tight">{name}</p>
         {sub && <p className="truncate text-[10px] text-fg-muted leading-tight mt-0.5">{sub}</p>}
       </div>
