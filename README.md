@@ -14,7 +14,11 @@ An open-source, browser-based FX engine for images and video. **Load media → s
 - **Export.** PNG, JPEG or WebP stills up to 16K (limited only by your GPU), MP4/WebM video, and batch export to ZIP.
 - **Light and dark.** One toggle; the canvas frame follows it (mono in dark, analog in light).
 
-## Run it
+## Open it
+
+**https://armgdnlabs.github.io/armgdn-labs-monitor-fx/** runs in any WebGL 2 browser. Nothing to install. Every push to `main` redeploys it.
+
+## Run it locally (only for development)
 
 Requirements: Node.js 18+ and a WebGL 2 browser (Safari 15+, Chrome, Edge, Firefox, Arc).
 

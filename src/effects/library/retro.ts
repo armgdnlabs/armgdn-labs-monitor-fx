@@ -157,13 +157,13 @@ void main() {
   float r1 = rgb2yiq(texture(uTex0, uv + vec2(lw * 1.6, 0.0)).rgb).x;
   // Peaking filter: boosts the luma high-pass, leaving the bright/dark halos tape is known for.
   c.x += u_sharpening * (c.x - (l1 + r1) * 0.5) * 1.3;
-  // Grain: fresh every frame but fixed in place (it never scrolls); slightly wider than tall.
-  vec2 gp = floor(vec2(uv.x * u_resolution * 1.5, uv.y * 486.0));
-  float g = hash12(gp + vec2(frame * 13.1, frame * 7.7) + seed) + hash12(gp * 1.7 + frame * 3.1) - 1.0;
+  // Grain: a fixed pattern locked to the frame. It does not move, roll or re-roll over time.
+  vec2 gp = floor(vec2(vUv.x * u_resolution * 1.5, vUv.y * 486.0));
+  float g = hash12(gp + seed) + hash12(gp * 1.7 + seed + 3.1) - 1.0;
   c.x += g * u_grain * 0.055;
   // Chroma noise: low-frequency horizontal streaks.
-  vec2 cp = vec2(floor(uv.x * u_resolution / 12.0), line);
-  c.yz += (vec2(hash12(cp + frame), hash12(cp + frame + 91.0)) - 0.5) * u_grain * 0.05;
+  vec2 cp = vec2(floor(vUv.x * u_resolution / 12.0), floor(vUv.y * 486.0));
+  c.yz += (vec2(hash12(cp + seed), hash12(cp + seed + 91.0)) - 0.5) * u_grain * 0.05;
   // Sparkle: short white dropout streaks on random lines.
   float dl = hash12(vec2(line, frame + 17.0));
   if (dl < u_sparkle * 0.012) {
