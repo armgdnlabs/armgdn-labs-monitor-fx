@@ -109,7 +109,7 @@ export interface EffectDef {
   passes: PassDef[];
   aux?: (values: ParamValues) => AuxSpec[];
   /** Effect output changes over time (grain, glitch…), so the preview must keep rendering. */
-  animated?: boolean;
+  animated?: boolean | ((values: ParamValues) => boolean);
   /** On-canvas draggable points: pairs of 0..1 range params. */
   handles?: { x: string; y: string; label?: string }[];
   /** Photo key (see data/photos.ts) used for the library preview. */
@@ -136,6 +136,12 @@ export const image = (key: string, label: string, def: string): ImageParam => ({
 export const gradient = (key: string, label: string, def: string): GradientParam => ({ key, label, type: "gradient", default: def });
 /** Puts params into an inspector group. */
 export const group = <T extends ParamDef>(name: string, params: T[]): T[] => params.map((p) => ({ ...p, group: name }));
+
+/** Whether the effect changes over time with these values (feedback passes always do). */
+export function effectAnimates(e: EffectDef, values: ParamValues = defaultValues(e)): boolean {
+  const a = typeof e.animated === "function" ? e.animated({ ...defaultValues(e), ...values }) : !!e.animated;
+  return a || e.passes.some((p) => p.feedback);
+}
 
 export function defaultValues(effect: EffectDef): ParamValues {
   const v: ParamValues = {};

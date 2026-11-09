@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { EFFECTS, getEffect, searchEffects } from "../effects/registry";
 import { BUILTIN_PRESETS, PRESET_SECTIONS, type BuiltinPreset, type PresetSnapshot } from "../effects/presets";
-import { CATEGORIES, defaultValues, type EffectDef } from "../effects/types";
+import { CATEGORIES, defaultValues, effectAnimates, type EffectDef } from "../effects/types";
 import { originalUrl, useThumbStrip, useThumbnail } from "../engine/thumbnails";
 import type { RenderLayer } from "../engine/Renderer";
 import { useEditor } from "../state/editor";
@@ -32,8 +32,8 @@ const snapshotLayers = (snap: PresetSnapshot, key: string) => (): RenderLayer[] 
     }];
   });
 
-const effectMoves = (e: EffectDef | undefined) => !!e && (!!e.animated || e.passes.some((p) => p.feedback));
-const snapshotMoves = (s: PresetSnapshot) => s.graph.some((g) => effectMoves(getEffect(g.id)) || !!g.mods || !!g.keyframes);
+const effectMoves = (e: EffectDef | undefined, values?: Record<string, number | string>) => !!e && effectAnimates(e, values);
+const snapshotMoves = (s: PresetSnapshot) => s.graph.some((g) => effectMoves(getEffect(g.id), g.values) || !!g.mods || !!g.keyframes);
 
 function useVisible<T extends Element>() {
   const ref = useRef<T>(null);
@@ -141,7 +141,6 @@ function EffectCard({ e }: { e: EffectDef }) {
       layers={effectLayers(e)}
       name={e.name}
       moves={effectMoves(e)}
-      title={e.description}
       favorite={favs.includes(e.id)}
       onFavorite={() => toggle(e.id)}
       onShare={() => copy(shareUrl(effectPreset(e)), "LINK")}

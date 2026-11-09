@@ -135,11 +135,11 @@ void main() {
     description: "Photographic noise: Gaussian sensor noise with separate luma and chroma, soft film-grain clumps, TV static or coarse grain. Each frame is a fresh, independent field (it boils in place, never slides); speed 0 freezes it.",
     keywords: "static grain texture overlay tv snow sensor iso film",
     preview: "portraits:2",
-    animated: true,
+    animated: (v) => Number(v.speed) > 0,
     params: [
       hero("amount", "Amount", 0, 3, 0.9),
       hero("size", "Size", 0.25, 3, 0.6),
-      hero("speed", "Speed (fps)", 0, 60, 24, 1),
+      hero("speed", "Speed (fps)", 0, 60, 0, 1),
       select("type", "Type", ["Sensor", "Film grain", "TV static", "Coarse"]),
       range("floor", "Floor", 0, 0.3, 0.02),
       range("chroma", "Chroma", 0, 1, 0.6),

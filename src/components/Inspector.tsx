@@ -54,7 +54,6 @@ function LayerInspector({ layer }: { layer: Layer }) {
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="px-3 pt-2 pb-1">
           <p className="text-[12px] caps">{effect.name}{effect.handles && <span className="tag-chip ml-2">DRAG POINT ON CANVAS</span>}</p>
-          <p className="text-[11px] text-fg-muted leading-snug mt-0.5">{effect.description}</p>
         </div>
         {heroes.length > 0 && (
           <div className={`grid gap-2 px-3 py-3 hair-b ${heroes.length === 3 ? "grid-cols-3" : heroes.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>

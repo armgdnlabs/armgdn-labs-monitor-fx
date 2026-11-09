@@ -71,7 +71,7 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     L("blur-sharp", { soften: 0.2, detail: 1.8, radius: 6 }),
     L("threshold", { level: 0.48, softness: 0.04, noise: 0.18, ink: "#1A1A1A", paper: "#F3F1EC" }),
     L("receipt", { dots: 300, heat: 1.0, banding: 0.4, fade: 0.25, torn: 1 }),
-    L("noise", { amount: 1.2, size: 1, chroma: 0, type: 3 }),
+    L("noise", { amount: 1.2, size: 1, chroma: 0, type: 3, speed: 24 }),
   ]),
   p("thermal-receipt", "Thermal receipt", "Print & paper", ["dancer", "streets"], [
     L("motion-blur", { distance: 40, angle: 265, mode: 1 }, { opacity: 0.7 }),

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { getEffect } from "../effects/registry";
 import type { PresetSnapshot } from "../effects/presets";
-import { defaultValues, type ParamValue, type ParamValues } from "../effects/types";
+import { defaultValues, effectAnimates, type ParamValue, type ParamValues } from "../effects/types";
 import { type Easing, type KeyframeTracks, type Modulator, type Modulators, applyModulators, resolveValues, upsertKeyframe } from "../lib/keyframes";
 import { NEUTRAL_PRE, type MaskValues, type PreValues, type RenderLayer, type SourceTransform } from "../engine/Renderer";
 import { uid } from "../lib/id";
@@ -455,7 +455,7 @@ export function stackIsAnimated(layers: Layer[]): boolean {
   return layers.some((l) => {
     if (!l.enabled) return false;
     const e = getEffect(l.effectId);
-    return !!e && (e.animated || e.passes.some((p) => p.feedback) || layerHasMotion(l));
+    return !!e && (effectAnimates(e, l.values) || layerHasMotion(l));
   });
 }
 
