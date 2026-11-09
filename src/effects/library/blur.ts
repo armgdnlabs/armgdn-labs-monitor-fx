@@ -1,5 +1,7 @@
+import { imageTexture } from "../../lib/textures";
+import { TEXTURES, textureUrl } from "./overlay";
 import { BLUR_FRAG } from "../../engine/glsl";
-import { angle, hero, range, select, single, toggle, type EffectDef } from "../types";
+import { group, hero, range, select, single, toggle, type EffectDef } from "../types";
 
 /** Golden-angle bokeh gather; highlights are boosted so they bloom into discs. */
 const BOKEH = `
@@ -26,21 +28,36 @@ vec3 bokeh(sampler2D t, vec2 uv, vec2 radius, float boost, int shape, float rotA
 `;
 
 /** Big radii run at reduced resolution: smoother (no tap gaps) and much cheaper. */
-const blurScale = (v: Record<string, number | string>) => { const r = Number(v.radius); return r > 120 ? 0.25 : r > 40 ? 0.5 : 1; };
-const pxRad = (v: Record<string, number | string>, key: string) => Number(v[key]) / 1080;
+
+const gScale = (v: Record<string, number | string>) => { const r = Number(v.strength) * 1.6; return r > 120 ? 0.25 : r > 40 ? 0.5 : 1; };
+
+/**
+ * Elliptical focus mask shared by motion blur and depth of field: 0 at the centre,
+ * rising to 1 outside the radius with the given falloff (inverted by u_mInvert).
+ */
+const MASK_GLSL = `
+float focusMask(vec2 uv) {
+  vec2 p = (uv - vec2(u_mx, u_my)) * vec2(aspect(), 1.0);
+  p = rot(radians(u_mRot)) * p;
+  p.x /= 1.0 + u_mStretch;
+  float d = length(p) / max(u_mRadius * 0.5, 1e-3);
+  float m = sat(pow(max(d - 1.0, 0.0), 1.0 / u_mFalloff) * u_mFalloff * 0.5);
+  m = smoothstep(0.0, 1.0, m);
+  return u_mInvert > 0.5 ? 1.0 - m : m;
+}
+`;
 
 export const blur: EffectDef[] = [
   {
     id: "gaussian-blur",
     name: "Gaussian blur",
     category: "Blur",
-    description: "Smooth separable blur that stays proportional at any export size.",
+    description: "Separable Gaussian blur.",
     keywords: "soft defocus smooth",
-    preview: "woman:1",
-    params: [hero("radius", "Radius", 0, 200, 24, 0.5, { unit: "px" }), select("axis", "Axis", ["Both", "Horizontal", "Vertical"])],
+    params: [hero("strength", "Strength", 0.3, 50, 14, 0.01), hero("aspect", "Aspect", -2, 2, 0)],
     passes: [
-      { id: "h", frag: BLUR_FRAG, inputs: ["input"], scale: blurScale, uniforms: (v) => ({ uDir: [Number(v.axis) === 2 ? 0 : 1, 0], uRadius: pxRad(v, "radius") }) },
-      { id: "v", frag: BLUR_FRAG, inputs: ["h"], scale: blurScale, uniforms: (v) => ({ uDir: [0, Number(v.axis) === 1 ? 0 : 1], uRadius: pxRad(v, "radius") }) },
+      { id: "h", frag: BLUR_FRAG, inputs: ["input"], scale: gScale, uniforms: (v) => ({ uDir: [1, 0], uRadius: (Number(v.strength) * 1.6 * Math.pow(2, Math.max(0, Number(v.aspect)))) / 1080 }) },
+      { id: "v", frag: BLUR_FRAG, inputs: ["h"], scale: gScale, uniforms: (v) => ({ uDir: [0, 1], uRadius: (Number(v.strength) * 1.6 * Math.pow(2, Math.max(0, -Number(v.aspect)))) / 1080 }) },
     ],
   },
   {
@@ -100,190 +117,298 @@ void main() {
     id: "motion-blur",
     name: "Motion blur",
     category: "Blur",
-    description: "Directional streak blur, centred or trailing, like a panning shutter.",
-    keywords: "directional speed streak pan",
-    preview: "dancer:1",
-    params: [hero("distance", "Distance", 0, 300, 60, 1, { unit: "px" }), angle("angle", "Angle", 0), select("mode", "Mode", ["Centred", "Trailing"]), range("boost", "Highlight boost", 0, 1, 0.2)],
-    passes: single(`
+    description: "Directional blur with an optional focus mask.",
+    keywords: "speed movement streak directional",
+    handles: [{ x: "mx", y: "my", label: "Mask" }],
+    params: [
+      hero("strength", "Strength", 0.3, 50, 20, 0.01),
+      hero("angle", "Angle", 0, 360, 0, 1, { unit: "°" }),
+      toggle("box", "Box"),
+      toggle("both", "Both directions", 1),
+      ...group("Mask", [toggle("mask", "Enable mask"), range("mx", "Mask center X", 0, 1, 0.5), range("my", "Mask center Y", 0, 1, 0.5), range("mRadius", "Mask radius", 0.01, 4, 0.35), range("mFalloff", "Mask falloff", 0.5, 6, 2, 0.1), range("mStretch", "Mask aspect stretch", 0, 5, 0, 0.05), range("mRot", "Mask rotation", -180, 180, 0, 1), toggle("mInvert", "Invert mask"), toggle("mDebug", "Debug mask")]),
+    ],
+    passes: single(MASK_GLSL + `
 void main() {
-  vec2 dir = vec2(cos(radians(u_angle)), sin(radians(u_angle))) * refPx(u_distance);
-  vec3 acc = vec3(0.0); float wsum = 0.0;
+  vec4 c = texture(uTex0, vUv);
+  // The motion-blur mask marks where blur goes (inside the ellipse; invert for outside).
+  float m = u_mask > 0.5 ? 1.0 - focusMask(vUv) : 1.0;
+  if (u_mDebug > 0.5 && u_mask > 0.5) { fragColor = vec4(mix(c.rgb, vec3(1.0, 0.0, 0.0), m * 0.6), c.a); return; }
+  vec2 dir = vec2(cos(radians(u_angle)), sin(radians(u_angle))) * refPx(u_strength * 4.0) * m;
+  vec4 acc = vec4(0.0); float ws = 0.0;
   for (int i = 0; i < 48; i++) {
     float t = float(i) / 47.0;
-    t = u_mode < 0.5 ? t - 0.5 : -t;
-    vec3 c = texture(uTex0, vUv + dir * t).rgb;
-    float w = 1.0 + pow(luma(c), 3.0) * u_boost * 6.0;
-    acc += c * w; wsum += w;
+    t = u_both > 0.5 ? t - 0.5 : -t;
+    float w = u_box > 0.5 ? 1.0 : exp(-t * t * 8.0);
+    acc += texture(uTex0, vUv + dir * t) * w; ws += w;
   }
-  fragColor = vec4(acc / wsum, 1.0);
+  fragColor = acc / ws;
 }`),
   },
   {
     id: "radial-blur",
     name: "Radial blur",
     category: "Blur",
-    description: "Spin blur around a movable centre, sharp at the middle.",
-    keywords: "spin rotate circular swirl",
-    preview: "tower:0",
-    handles: [{ x: "cx", y: "cy", label: "Centre" }],
-    params: [hero("amount", "Angle", 0, 45, 8, 0.1, { unit: "°" }), range("cx", "Centre X", 0, 1, 0.5), range("cy", "Centre Y", 0, 1, 0.5), range("falloff", "Sharp centre", 0, 1, 0.3)],
+    description: "Spin blur around a centre point.",
+    keywords: "spin rotation swirl circular",
+    handles: [{ x: "cx", y: "cy", label: "Center" }],
+    params: [range("cx", "Center X", 0, 1, 0.5), range("cy", "Center Y", 0, 1, 0.5), hero("angle", "Angle", 0, 90, 16, 1, { unit: "°" }), hero("samples", "Samples", 1, 100, 45, 1), toggle("box", "Box")],
     passes: single(`
 void main() {
   vec2 c = vec2(u_cx, u_cy);
   vec2 p = (vUv - c) * vec2(aspect(), 1.0);
-  float k = smoothstep(0.0, max(u_falloff, 0.001), length(p));
-  vec3 acc = vec3(0.0);
-  for (int i = 0; i < 40; i++) {
-    float a = (float(i) / 39.0 - 0.5) * radians(u_amount) * k;
-    vec2 q = rot(a) * p;
-    acc += texture(uTex0, q / vec2(aspect(), 1.0) + c).rgb;
+  vec4 acc = vec4(0.0); float ws = 0.0;
+  for (int i = 0; i < 100; i++) {
+    if (float(i) >= u_samples) break;
+    float t = u_samples > 1.0 ? float(i) / (u_samples - 1.0) - 0.5 : 0.0;
+    float w = u_box > 0.5 ? 1.0 : exp(-t * t * 8.0);
+    vec2 q = rot(radians(u_angle) * t) * p / vec2(aspect(), 1.0) + c;
+    acc += texture(uTex0, q) * w; ws += w;
   }
-  fragColor = vec4(acc / 40.0, 1.0);
+  fragColor = acc / ws;
 }`),
   },
   {
     id: "zoom-blur",
     name: "Zoom blur",
     category: "Blur",
-    description: "Streaks rushing out from a focal point, like zooming the lens mid-exposure.",
+    description: "Blur streaking out from a centre point.",
     keywords: "zoom burst speed tunnel",
-    preview: "forest:1",
-    handles: [{ x: "cx", y: "cy", label: "Focus" }],
-    params: [hero("amount", "Amount", 0, 1, 0.3), range("cx", "Centre X", 0, 1, 0.5), range("cy", "Centre Y", 0, 1, 0.5), range("clear", "Clear centre", 0, 0.6, 0.1), range("boost", "Highlight boost", 0, 1, 0.3)],
+    handles: [{ x: "cx", y: "cy", label: "Center" }],
+    params: [range("cx", "Center X", 0, 1, 0.5), range("cy", "Center Y", 0, 1, 0.5), hero("strength", "Strength", 0, 1, 0.2), hero("samples", "Samples", 1, 100, 45, 1), toggle("box", "Box")],
     passes: single(`
 void main() {
   vec2 c = vec2(u_cx, u_cy);
-  vec2 d = vUv - c;
-  float k = smoothstep(u_clear, u_clear + 0.25, length(d * vec2(aspect(), 1.0)));
-  vec3 acc = vec3(0.0); float wsum = 0.0;
-  for (int i = 0; i < 48; i++) {
-    float t = float(i) / 47.0;
-    vec3 s = texture(uTex0, c + d * (1.0 - t * u_amount * k)).rgb;
-    float w = 1.0 + pow(luma(s), 3.0) * u_boost * 6.0;
-    acc += s * w; wsum += w;
+  vec4 acc = vec4(0.0); float ws = 0.0;
+  for (int i = 0; i < 100; i++) {
+    if (float(i) >= u_samples) break;
+    float t = u_samples > 1.0 ? float(i) / (u_samples - 1.0) : 0.0;
+    float w = u_box > 0.5 ? 1.0 : exp(-t * t * 3.0);
+    acc += texture(uTex0, c + (vUv - c) * (1.0 - t * u_strength)) * w; ws += w;
   }
-  fragColor = vec4(acc / wsum, 1.0);
+  fragColor = acc / ws;
 }`),
   },
   {
     id: "blur-sharp",
     name: "Blur/sharp",
     category: "Blur",
-    description: "Frequency split: soften the broad tones while crisping fine texture, or the reverse.",
-    keywords: "frequency separation clarity dreamy",
-    preview: "greenhouse:1",
-    params: [hero("soften", "Soften tones", 0, 1, 0.5), hero("detail", "Fine detail", -1, 3, 1.2), range("radius", "Split radius", 1, 40, 8, 0.5, { unit: "px" })],
+    description: "One control from blur (positive) to sharpen (negative), with a detail threshold.",
+    keywords: "unsharp mask detail clarity soften",
+    params: [hero("blurriness", "Blurriness", -5, 1, -5, 0.01), hero("threshold", "Threshold", 0, 1, 1, 0.001), hero("ringing", "Ringing", 0, 1, 0.2)],
     passes: single(`
 void main() {
-  vec3 c = texture(uTex0, vUv).rgb;
-  vec3 lo = blur13(uTex0, vUv, refPx(u_radius)).rgb;
-  vec3 lo2 = blur13(uTex0, vUv, refPx(u_radius * 2.5)).rgb;
-  vec3 hi = c - lo;
-  vec3 base = mix(lo, lo2, u_soften);
-  fragColor = vec4(sat(base + hi * u_detail), 1.0);
+  vec4 c = texture(uTex0, vUv);
+  // Ringing widens the kernel, so sharpening halos spread further.
+  float r = 1.0 + u_ringing * 6.0;
+  vec3 lo = blur13(uTex0, vUv, refPx(r)).rgb;
+  vec3 hi = c.rgb - lo;
+  vec3 o;
+  if (u_blurriness >= 0.0) o = mix(c.rgb, blur13(uTex0, vUv, refPx(2.0 + u_blurriness * 10.0)).rgb, u_blurriness);
+  else {
+    // Threshold: only detail whose contrast is below it gets boosted (1 = everything).
+    float m = smoothstep(u_threshold, u_threshold * 0.7, length(hi) * 3.0) + step(0.999, u_threshold);
+    o = c.rgb + hi * (-u_blurriness) * 0.8 * sat(m);
+  }
+  fragColor = vec4(sat(o), c.a);
 }`),
   },
   {
     id: "depth-of-field",
     name: "Depth of field",
     category: "Blur",
-    description: "Tilt-shift focus: a sharp band (or spot) with bokeh growing away from it.",
-    keywords: "tilt shift miniature focus bokeh",
-    preview: "highway:0",
-    handles: [{ x: "fx", y: "fy", label: "Focus" }],
+    description: "Lens defocus outside a focus area, with a bladed aperture.",
+    keywords: "bokeh tilt shift focus lens aperture",
+    handles: [{ x: "mx", y: "my", label: "Focus" }],
     params: [
-      select("mode", "Focus", ["Band", "Spot"]),
-      hero("blur", "Max blur", 0, 80, 26, 0.5, { unit: "px" }),
-      hero("size", "Focus size", 0, 0.8, 0.15),
-      range("fx", "Focus X", 0, 1, 0.5),
-      range("fy", "Focus Y", 0, 1, 0.5),
-      angle("tilt", "Band angle", 0),
-      range("falloff", "Falloff", 0.05, 1, 0.35),
-      range("highlights", "Highlight boost", 0, 1, 0.4),
-      range("saturation", "Miniature saturation", 0.5, 2, 1.15),
+      range("mx", "Center X", 0, 1, 0.5),
+      range("my", "Center Y", 0, 1, 0.5),
+      hero("mRadius", "Radius", 0.01, 4, 0.35),
+      range("mStretch", "Aspect stretch", 0, 5, 0, 0.05),
+      range("mRot", "Mask rotation", -180, 180, 0, 1),
+      range("mFalloff", "Falloff", 0.5, 6, 2, 0.1),
+      hero("blur", "Blur strength", 0, 0.1, 0.01, 0.001),
+      range("samples", "Samples", 10, 1000, 150, 10),
+      ...group("Aperture", [range("blades", "Blades", 3, 10, 6, 1), range("roundness", "Blade roundness", 0, 1, 0), range("aRot", "Aperture rotation", -180, 180, 0, 1), range("feather", "Aperture feather", 0, 0.9, 0), range("anamorphic", "Anamorphic stretch", 1, 3, 1), range("cata", "Catadioptric", 0, 0.7, 0)]),
+      toggle("mInvert", "Invert mask"),
+      toggle("mDebug", "Debug mask"),
+      toggle("aDebug", "Debug aperture"),
     ],
-    passes: single(BOKEH + `
+    passes: single(MASK_GLSL + `
+// Polygon aperture radius at angle a (1 = circle when roundness is 1).
+float aperture(float a) {
+  float n = u_blades;
+  float seg = TAU / n;
+  float k = cos(PI / n) / cos(mod(a + radians(u_aRot), seg) - seg * 0.5);
+  return mix(k, 1.0, u_roundness);
+}
 void main() {
-  vec2 p = (vUv - vec2(u_fx, u_fy)) * vec2(aspect(), 1.0);
-  float d = u_mode < 0.5 ? abs(dot(p, vec2(-sin(radians(u_tilt)), cos(radians(u_tilt))))) : length(p);
-  float k = smoothstep(u_size, u_size + u_falloff, d);
-  vec3 c = k > 0.01 ? bokeh(uTex0, vUv, refPx(u_blur * k), u_highlights, 0, 0.0) : texture(uTex0, vUv).rgb;
-  fragColor = vec4(saturation(c, u_saturation), 1.0);
+  vec4 c = texture(uTex0, vUv);
+  float m = focusMask(vUv);
+  if (u_aDebug > 0.5) {
+    vec2 p = (vUv - 0.5) * vec2(aspect(), 1.0) * 2.4 * vec2(1.0 / u_anamorphic, 1.0);
+    float r = length(p) / aperture(atan(p.y, p.x));
+    float inside = step(r, 1.0) * step(u_cata, r) * mix(1.0, smoothstep(1.0, 1.0 - u_feather, r), step(0.001, u_feather));
+    fragColor = vec4(vec3(inside), 1.0); return;
+  }
+  if (u_mDebug > 0.5) { fragColor = vec4(mix(c.rgb, vec3(1.0, 0.0, 0.0), m * 0.6), c.a); return; }
+  float R = u_blur * m;
+  if (R < 1e-4) { fragColor = c; return; }
+  vec3 acc = vec3(0.0); float ws = 0.0;
+  for (int i = 0; i < 1000; i++) {
+    if (float(i) >= u_samples) break;
+    float fi = float(i);
+    float rr = sqrt((fi + 0.5) / u_samples);
+    // Catadioptric (mirror) lenses have a central obstruction: donut bokeh.
+    rr = mix(u_cata, 1.0, rr);
+    float a = fi * 2.39996323;
+    vec2 o = vec2(cos(a), sin(a)) * rr * aperture(a);
+    o.x /= u_anamorphic;
+    vec3 s = texture(uTex0, vUv + o * R * vec2(1.0 / aspect(), 1.0)).rgb;
+    // Bright samples bloom into the aperture shape; feather fades the rim.
+    float w = (1.0 + pow(luma(s), 4.0) * 8.0) * mix(1.0, 1.0 - rr * 0.7, u_feather);
+    acc += s * w; ws += w;
+  }
+  fragColor = vec4(acc / ws, c.a);
 }`),
   },
   {
     id: "camera-shake",
     name: "Camera shake",
     category: "Blur",
-    description: "Handheld jitter: a shaky multi-exposure trail that moves over time.",
-    keywords: "handheld shake jitter double exposure",
-    preview: "man:5",
+    description: "Handheld camera motion: pan, tilt, roll and zoom, with blur, randomness and pauses.",
+    keywords: "handheld shake wobble tremor",
     animated: true,
-    params: [hero("amount", "Amount", 0, 60, 14, 0.5, { unit: "px" }), hero("trail", "Trail", 0, 1, 0.6), range("speed", "Speed", 0, 4, 1), range("rotation", "Rotation", 0, 1, 0.2), toggle("rgb", "RGB separation")],
+    params: [
+      hero("motion", "Motion scale", 0, 4, 2),
+      hero("speed", "Speed scale", 0, 4, 0.899, 0.001),
+      hero("blur", "Motion blur", 0, 1, 1),
+      ...group("Pan / tilt / rotate", [range("pan", "Pan amplitude", 0, 1, 0.597, 0.001), range("tilt", "Tilt amplitude", 0, 1, 0.023, 0.001), range("roll", "Rotation amplitude", 0, 1, 0.1, 0.001), range("ptrSpeed", "PTR speed", 0, 4, 0.5, 0.001)]),
+      ...group("Zoom", [range("zoom", "Zoom amplitude", 0, 1, 0, 0.001), range("zoomSpeed", "Zoom speed", 0, 4, 0, 0.001), range("phase", "Phase", 0, 1, 0.75, 0.001)]),
+      ...group("Randomness", [range("randScale", "Randomness scale", 0, 2, 1, 0.001), range("randSpeed", "Randomness speed", 0, 4, 1.457, 0.001)]),
+      ...group("Pauses", [range("pauseLen", "Pause length", 0, 1, 0.419, 0.001), range("pauseEvery", "Pause interval", 1, 60, 18, 1), range("pauseRand", "Pause randomness", 0, 1, 0.155, 0.001), range("rseed", "Random seed", 0, 100, 8, 1)]),
+    ],
     passes: single(`
-vec2 shake(float t) { return vec2(snoise(vec2(t, 1.3)), snoise(vec2(t, 7.9))); }
+// Camera pose at time t: (x, y, roll, zoom).
+vec4 pose(float t) {
+  // Pauses: the operator holds still for part of every interval.
+  float iv = u_pauseEvery * 0.25;
+  float k = floor(t / iv);
+  float f = fract(t / iv) + (hash11(k + u_rseed) - 0.5) * u_pauseRand;
+  float hold = smoothstep(1.0 - u_pauseLen, 1.0 - u_pauseLen + 0.1, f);
+  float tt = t * u_speed;
+  float a = tt * u_ptrSpeed * 3.0 + u_phase * TAU;
+  vec2 smooth_ = vec2(sin(a), sin(a * 1.31 + 1.7)) * vec2(u_pan, u_tilt);
+  vec2 rnd = vec2(snoise(vec2(tt * u_randSpeed, u_rseed)), snoise(vec2(tt * u_randSpeed, u_rseed + 9.0))) * u_randScale * 0.5;
+  float roll = (sin(a * 0.8 + 3.0) * 0.6 + snoise(vec2(tt * u_randSpeed * 0.7, u_rseed + 3.0)) * u_randScale * 0.4) * u_roll;
+  float z = sin(tt * u_zoomSpeed * 3.0 + u_phase * TAU) * u_zoom;
+  return vec4(smooth_ + rnd * (u_pan + u_tilt + 0.1), roll, z) * (1.0 - hold * 0.85) * u_motion;
+}
+vec2 apply(vec2 uv, vec4 p) {
+  vec2 q = (uv - 0.5) * vec2(aspect(), 1.0);
+  q = rot(p.z * 0.08) * q / (1.0 + p.w * 0.1 + 0.03 * u_motion);
+  return q / vec2(aspect(), 1.0) + 0.5 + p.xy * 0.02;
+}
 void main() {
-  float t = uTime * u_speed + uSeed * 10.0;
-  vec3 acc = vec3(0.0); float wsum = 0.0;
-  for (int i = 0; i < 16; i++) {
-    float fi = float(i) / 15.0;
-    float tt = t - fi * u_trail * 0.6;
-    vec2 o = shake(tt) * refPx(u_amount);
-    float r = snoise(vec2(tt, 3.3)) * u_rotation * 0.03;
-    vec2 uv = rot(r) * (vUv - 0.5) + 0.5 + o;
-    float w = exp(-fi * 3.0);
-    vec3 c = u_rgb > 0.5 ? vec3(texture(uTex0, uv + o * 0.3).r, texture(uTex0, uv).g, texture(uTex0, uv - o * 0.3).b) : texture(uTex0, uv).rgb;
-    acc += c * w; wsum += w;
+  vec4 acc = vec4(0.0);
+  for (int i = 0; i < 12; i++) {
+    float t = uTime - float(i) / 11.0 * u_blur / 24.0;
+    acc += texture(uTex0, apply(vUv, pose(t)));
   }
-  fragColor = vec4(acc / wsum, 1.0);
+  fragColor = acc / 12.0;
 }`),
   },
   {
     id: "motion-trails",
     name: "Motion trails",
     category: "Blur",
-    description: "Persistence of vision: each frame lingers and drifts, leaving light trails (great on video).",
-    keywords: "trails echo afterimage long exposure feedback",
-    preview: "highway:1",
-    animated: true,
-    params: [hero("persistence", "Persistence", 0, 0.98, 0.85), hero("drift", "Drift", 0, 20, 2, 0.1, { unit: "px" }), angle("angle", "Drift angle", 90), select("mode", "Accumulate", ["Lighten", "Average", "Screen"]), range("zoom", "Zoom drift", -0.02, 0.02, 0, 0.001)],
-    passes: [{
-      id: "fb",
-      feedback: true,
-      inputs: ["input", "prev"],
-      frag: `
+    description: "Highlights leave fading light trails that drift and shake.",
+    keywords: "trail echo light painting long exposure",
+    params: [
+      hero("threshold", "Threshold", 0, 4, 0.75),
+      range("knee", "Knee", 0, 2, 0.12),
+      hero("dimming", "Dimming", 0, 0.5, 0.06, 0.001),
+      range("dirX", "Direction X", -1, 1, 0),
+      range("dirY", "Direction Y", -1, 1, 0.5),
+      range("shake", "Shake", 0, 5, 0.15),
+      range("shakeSpeed", "Shake speed", 0, 10, 5),
+      hero("intensity", "Intensity", 0, 3, 1),
+      range("sourceDim", "Source dim", 0, 1, 0.75),
+      select("blend", "Blend mode", ["Screen", "Add", "Lighten"]),
+    ],
+    passes: [
+      {
+        id: "fb",
+        feedback: true,
+        inputs: ["input", "prev"],
+        frag: `
 void main() {
-  vec4 cur = texture(uTex0, vUv);
-  vec2 dir = vec2(cos(radians(u_angle)), sin(radians(u_angle))) * refPx(u_drift);
-  vec2 puv = (vUv - 0.5) * (1.0 - u_zoom) + 0.5 - dir;
-  vec3 prev = texture(uTex1, puv).rgb * u_persistence;
-  int m = int(u_mode + 0.5);
-  vec3 o = m == 0 ? max(cur.rgb, prev) : m == 1 ? mix(cur.rgb, prev / max(u_persistence, 1e-3), u_persistence) : blendScreen(cur.rgb, prev);
-  if (uHasPrev < 0.5) o = cur.rgb;
-  fragColor = vec4(sat(o), 1.0);
+  vec3 cur = texture(uTex0, vUv).rgb;
+  float l = max(cur.r, max(cur.g, cur.b));
+  float th = u_threshold * 0.25;
+  float k = max(u_knee * 0.25, 1e-3);
+  float s = clamp(l - th + k, 0.0, 2.0 * k); s = s * s / (4.0 * k);
+  vec3 bright = cur * max(s, l - th) / max(l, 1e-4);
+  vec2 sh = vec2(snoise(vec2(uTime * u_shakeSpeed, 1.0)), snoise(vec2(uTime * u_shakeSpeed, 7.0))) * u_shake;
+  vec2 drift = (vec2(u_dirX, u_dirY) * 2.0 + sh) * refPx(1.0);
+  vec3 prev = uHasPrev > 0.5 ? texture(uTex1, vUv - drift).rgb : vec3(0.0);
+  fragColor = vec4(max(bright, prev * (1.0 - u_dimming)), 1.0);
 }`,
-    }],
+      },
+      {
+        id: "out",
+        inputs: ["input", "fb"],
+        frag: `
+void main() {
+  vec4 c = texture(uTex0, vUv);
+  vec3 t = texture(uTex1, vUv).rgb * u_intensity;
+  vec3 base = c.rgb * (1.0 - u_sourceDim * 0.0) * mix(1.0, 0.6, u_sourceDim * 0.5);
+  int b = int(u_blend + 0.5);
+  vec3 o = b == 1 ? base + t : b == 2 ? max(base, t) : blendScreen(base, t);
+  fragColor = vec4(sat(o), c.a);
+}`,
+      },
+    ],
   },
   {
     id: "texture-blur",
-    name: "Texture blur",
+    name: "Texture Blur",
     category: "Blur",
-    description: "Blur seen through frosted or reeded glass: displaced by a noise texture before smearing.",
-    keywords: "frosted glass smudge organic diffuse",
-    preview: "face:5",
-    params: [hero("amount", "Amount", 0, 60, 18, 0.5, { unit: "px" }), hero("scale", "Texture scale", 1, 60, 12, 0.5), select("texture", "Texture", ["Frosted", "Smudge", "Streaks"]), range("soft", "Softness", 0, 1, 0.5)],
+    description: "Blur shaped by a texture: the texture pushes samples, like looking through frosted or wet glass.",
+    keywords: "frosted glass smudge texture distort blur",
+    params: [
+      select("texture", "Texture", TEXTURES.map((t) => t.name), 9),
+      select("fit", "Fit type", ["Cover", "Tile"]),
+      range("texScale", "Texture scale", 1, 5, 1),
+      hero("strength", "Blur strength", 0, 0.5, 0.5, 0.001),
+      hero("boost", "Highlight boost", 0, 1, 0),
+      hero("influence", "Texture influence", 0, 1, 1, 0.1),
+    ],
+    aux: (v) => [imageTexture(textureUrl(Number(v.texture) | 0))],
     passes: single(`
-vec2 disp(vec2 px) {
-  int t = int(u_texture + 0.5);
-  if (t == 0) return hash22(floor(px / max(u_scale * 0.2, 1.0))) - 0.5;
-  if (t == 1) return vec2(sfbm(px / (u_scale * 6.0)), sfbm(px / (u_scale * 6.0) + 9.0));
-  return vec2(sfbm(vec2(px.x / (u_scale * 0.8), px.y / (u_scale * 30.0))), 0.0);
+vec2 tuv(vec2 uv) {
+  vec2 p = (uv - 0.5) * vec2(aspect(), 1.0) / u_texScale;
+  float ta = uAuxRes0.x / max(uAuxRes0.y, 1.0);
+  float s = u_fit > 0.5 ? 0.6 : max(1.0, aspect() / ta);
+  return p / vec2(s * ta, s) + 0.5;
 }
 void main() {
-  vec2 px = refCoord(vUv);
-  vec2 o = disp(px) * refPx(u_amount) * 2.0;
-  vec3 c = mix(texture(uTex0, vUv + o).rgb, blur13(uTex0, vUv + o, refPx(u_amount * 0.5)).rgb, u_soft);
-  fragColor = vec4(c, 1.0);
+  vec4 c = texture(uTex0, vUv);
+  vec2 t = tuv(vUv);
+  float h = luma(texture(uAux0, t).rgb);
+  vec2 e = 2.0 / uAuxRes0;
+  vec2 g = vec2(luma(texture(uAux0, t + vec2(e.x, 0.0)).rgb) - luma(texture(uAux0, t - vec2(e.x, 0.0)).rgb), luma(texture(uAux0, t + vec2(0.0, e.y)).rgb) - luma(texture(uAux0, t - vec2(0.0, e.y)).rgb));
+  // The texture's slope steers a small blur kernel; flat areas still get a soft base blur.
+  vec2 dir = g * 12.0 * u_influence + (hash22(floor(vUv * uRes * 0.5)) - 0.5) * (1.0 - u_influence) * 0.2;
+  float R = u_strength * 0.08;
+  vec3 acc = vec3(0.0); float ws = 0.0;
+  for (int i = 0; i < 16; i++) {
+    float fi = float(i) / 15.0;
+    vec2 o = (dir + vec2(cos(fi * 6.28), sin(fi * 6.28)) * 0.15 * (0.4 + h)) * R * fi;
+    vec3 s = texture(uTex0, vUv + o).rgb;
+    float w = 1.0 + pow(luma(s), 3.0) * u_boost * 6.0;
+    acc += s * w; ws += w;
+  }
+  fragColor = vec4(acc / ws, c.a);
 }`),
   },
 ];

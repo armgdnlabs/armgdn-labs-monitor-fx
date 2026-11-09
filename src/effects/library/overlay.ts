@@ -20,7 +20,7 @@ export const TEXTURES = [
   { name: "Dust", id: "1768956463493-a8118a41b629", by: "linusbelanger" },
   { name: "Linen", id: "1764437835706-ba9d63250bd2", by: "loganvoss" },
 ];
-const textureUrl = (i: number) => `https://images.unsplash.com/photo-${(TEXTURES[i] ?? TEXTURES[0]).id}?w=2000&q=80&auto=format`;
+export const textureUrl = (i: number) => `https://images.unsplash.com/photo-${(TEXTURES[i] ?? TEXTURES[0]).id}?w=2000&q=80&auto=format`;
 
 const DEFAULT_MIX_IMAGE = "https://images.unsplash.com/photo-1547070451-ce386c65160a?w=1600&q=80&auto=format";
 
@@ -29,51 +29,61 @@ export const overlay: EffectDef[] = [
     id: "text",
     name: "Text",
     category: "Overlay",
-    description: "Type set in the brand faces, placed, rotated and tracked — with outline, shadow or knockout.",
+    description: "Set type on the image.",
     keywords: "type typography title caption words font",
-    preview: "citynight:2",
     handles: [{ x: "x", y: "y", label: "Text" }],
     params: [
-      text("content", "Text", "THE CHAOS\nTO CREATE", { multiline: true, maxLength: 400 }),
+      text("content", "Text", "Type", { multiline: true, maxLength: 400 }),
       select("font", "Font", TEXT_FONTS.map((f) => f.label)),
-      hero("size", "Size", 0.02, 1, 0.12),
-      range("weight", "Weight", 100, 900, 400, 100),
-      range("tracking", "Tracking", -0.1, 1, 0.3),
-      select("align", "Align", ["Left", "Centre", "Right"], 1),
-      angle("rotation", "Rotation", 0),
+      select("weight", "Weight", ["Light", "Regular", "Medium", "Bold", "Black"], 1),
+      toggle("italic", "Italic"),
+      select("align", "Align", ["Left", "Center", "Right"], 1),
       range("x", "Position X", 0, 1, 0.5),
       range("y", "Position Y", 0, 1, 0.5),
-      color("fill", "Colour", "#F7F2EC"),
-      select("mode", "Mode", ["Fill", "Outline", "Knockout", "Invert"]),
-      ...group("Effects", [range("outline", "Outline width", 0, 10, 2, 0.1, { unit: "px" }), range("shadow", "Shadow", 0, 1, 0), range("glow", "Glow", 0, 1, 0)]),
+      hero("size", "Size", 0.01, 0.6, 0.12, 0.005),
+      range("rotation", "Rotation", -360, 360, 0, 1, { unit: "°" }),
+      range("lineHeight", "Line height", 0.5, 3, 1.2, 0.05),
+      range("tracking", "Letter spacing", -0.1, 0.6, 0, 0.005),
+      color("fill", "Text color", "#FFFFFF"),
+      hero("opacity", "Opacity", 0, 1, 1),
+      ...group("Stroke", [range("stroke", "Stroke width", 0, 30, 0, 0.5), color("strokeColor", "Stroke color", "#000000")]),
+      select("blend", "Blend", BLEND_MODES as unknown as string[]),
     ],
-    aux: (v) => [textTexture(String(v.content), Number(v.font), Number(v.weight), Number(v.tracking), Number(v.align))],
+    aux: (v) => [textTexture(String(v.content), Number(v.font), [300, 400, 500, 700, 900][Number(v.weight) | 0] ?? 400, Number(v.tracking), Number(v.align), Number(v.lineHeight), Number(v.italic) > 0.5)],
     passes: single(`
 float cover(vec2 uv) {
   vec2 p = (uv - vec2(u_x, u_y)) * vec2(aspect(), 1.0);
   p = rot(-radians(u_rotation)) * p;
-  float h = u_size * uAuxRes0.y / 190.0;
+  // The texture is set at 160 px per line; size is the cap height as a fraction of the frame.
+  float h = u_size * uAuxRes0.y / 160.0;
   vec2 box = vec2(h * uAuxRes0.x / uAuxRes0.y, h);
   vec2 t = p / box + 0.5;
   if (t.x < 0.0 || t.x > 1.0 || t.y < 0.0 || t.y > 1.0) return 0.0;
   return texture(uAux0, t).r;
 }
+vec3 blendTo(vec3 b, vec3 s, int m) {
+  if (m == 1) return b * s;
+  if (m == 2) return blendScreen(b, s);
+  if (m == 3) return blendOverlay(b, s);
+  if (m == 4) return blendSoftLight(b, s);
+  if (m == 5) return b + s;
+  if (m == 6) return abs(b - s);
+  if (m == 7) return min(b, s);
+  if (m == 8) return max(b, s);
+  return s;
+}
 void main() {
   vec4 c = texture(uTex0, vUv);
   float a = cover(vUv);
-  int m = int(u_mode + 0.5);
   vec3 o = c.rgb;
-  if (u_shadow > 0.0) o = mix(o, vec3(0.0), cover(vUv - refPx(6.0) * vec2(-1.0, 1.0)) * u_shadow * 0.7);
-  if (u_glow > 0.0) { float g = 0.0; for (int i = 0; i < 8; i++) { float an = float(i) * 0.785; g += cover(vUv + vec2(cos(an), sin(an)) * refPx(10.0)); } o = blendScreen(o, u_fill * g / 8.0 * u_glow); }
-  if (m == 0) o = mix(o, u_fill, a);
-  else if (m == 1) {
+  int m = int(u_blend + 0.5);
+  if (u_stroke > 0.0) {
     float r = 0.0;
-    for (int i = 0; i < 12; i++) { float an = float(i) * 0.5236; r = max(r, cover(vUv + vec2(cos(an), sin(an)) * refPx(u_outline))); }
-    o = mix(o, u_fill, sat(r - a));
+    for (int i = 0; i < 16; i++) { float an = float(i) * 0.3927; r = max(r, cover(vUv + vec2(cos(an), sin(an)) * refPx(u_stroke))); }
+    o = mix(o, blendTo(o, u_strokeColor, m), sat(r - a) * u_opacity);
   }
-  else if (m == 2) o = mix(u_fill, o, a);
-  else o = mix(o, 1.0 - o, a);
-  fragColor = vec4(o, c.a);
+  o = mix(o, blendTo(o, u_fill, m), a * u_opacity);
+  fragColor = vec4(sat(o), c.a);
 }`),
   },
   {
@@ -114,7 +124,7 @@ void main() {
   m /= 9.0;
   float d = (luma(tex) - m) * u_contrast;
   // Relief from the photo itself: its luminance gradient lights the surface and nudges the image.
-  vec2 e = 1.5 / uAuxRes0;
+  vec2 e = 4.0 / uAuxRes0;
   vec2 grad = vec2(tl(tuv + vec2(e.x, 0.0)) - tl(tuv - vec2(e.x, 0.0)), tl(tuv + vec2(0.0, e.y)) - tl(tuv - vec2(0.0, e.y)));
   vec4 c = texture(uTex0, vUv + grad * 0.02 * u_displace);
   vec3 t3 = mix(vec3(0.5 + d), 0.5 + (tex - m) * u_contrast, u_color);
@@ -124,7 +134,7 @@ void main() {
   else if (b == 1) o = c.rgb * sat(mix(vec3(1.0 + min(d, 0.0) * 2.0), tex / max(m, 0.05), u_color));
   else if (b == 2) o = blendScreen(c.rgb, sat(vec3(max(d, 0.0) * 2.0)));
   else if (b == 3) o = blendSoftLight(c.rgb, sat(t3));
-  else o = c.rgb * (1.0 + dot(grad, vec2(-0.7, 0.7)) * 4.0 * u_contrast + d * 0.5);
+  else o = c.rgb * (1.0 + dot(grad, vec2(-0.7, 0.7)) * 9.0 * u_contrast + d * 0.6);
   fragColor = vec4(mix(c.rgb, sat(o), u_opacity), c.a);
 }`),
   },
@@ -183,73 +193,129 @@ void main() {
   },
   {
     id: "blob-tracker",
-    name: "Blob tracker",
+    name: "Blob Tracker",
     category: "Overlay",
-    description: "Computer-vision overlay: tracking boxes lock onto high-contrast regions, with IDs and links.",
+    description: "Computer-vision overlay: boxes, centres, coordinates and links around regions near a key colour.",
     keywords: "tracking boxes cv detection hud surveillance",
-    preview: "street:0",
     animated: true,
     params: [
-      hero("cells", "Grid", 4, 40, 14, 1),
-      hero("threshold", "Sensitivity", 0, 1, 0.45),
-      range("links", "Links", 0, 1, 0.5),
-      range("labels", "Labels", 0, 1, 1),
-      range("fill", "Box fill", 0, 1, 0.12),
-      color("tint", "Colour", "#4CFF7A"),
-      toggle("animate", "Jitter", 1),
+      color("key", "Key color", "#FFFFFF"),
+      hero("threshold", "Threshold", 0, 1, 0.55, 0.001),
+      hero("persistence", "Persistence", 0.5, 0.99, 0.82),
+      toggle("debug", "Debug mask"),
+      ...group("Boxes", [toggle("randomPalette", "Random palette", 1), color("boxColor", "Box color", "#00F2FF"), select("palette", "Palette set", ["Neon", "Signal", "Mono", "Pastel"]), select("boxType", "Box type", ["Full", "Corners", "Brackets", "Dashed"], 1), select("boxBlend", "Box blend", ["Default", "Screen", "Difference", "Multiply"]), range("thickness", "Box thickness px", 0.5, 8, 1.5, 0.5), range("outline", "Box outline opacity", 0, 1, 1, 0.05), range("fill", "Box fill opacity", 0, 1, 0.12, 0.02)]),
+      ...group("Centers", [select("centerType", "Center type", ["None", "Dot", "Cross", "Plus", "Square"], 4), range("centerSize", "Center size px", 1, 16, 3, 0.5)]),
+      ...group("Captions", [select("captionPos", "Caption position", ["Off", "Top left", "Top", "Top right", "Right", "Bottom right", "Bottom", "Bottom left", "Left"], 1), range("captionSize", "Caption size px", 6, 48, 22, 1), range("captionBg", "Caption bg opacity", 0, 1, 0.45, 0.05)]),
+      ...group("Lines", [select("lineType", "Line type", ["None", "Neighbours", "Chain", "To centre"], 1), select("lineStyle", "Line style", ["Solid", "Dashed", "Dotted", "Glow"], 2)]),
     ],
-    aux: () => [glyphAtlas("0123456789ABCDEF")],
-    passes: single(`
-float interest(vec2 cell, vec2 g) {
-  vec2 c = (cell + 0.5) / g;
-  vec2 o = 0.3 / g;
-  float a = luma(texture(uTex0, c).rgb);
-  float b = luma(texture(uTex0, c + o).rgb);
-  float d = luma(texture(uTex0, c - o).rgb);
-  float e = luma(texture(uTex0, c + vec2(o.x, -o.y)).rgb);
-  float f = luma(texture(uTex0, c + vec2(-o.x, o.y)).rgb);
-  float lo = min(min(min(a, b), min(d, e)), f);
-  float hi = max(max(max(a, b), max(d, e)), f);
-  return (hi - lo) * 2.2 + a * 0.35;
-}
-float glyph(vec2 p, float idx) { if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) return 0.0; return texture(uAux0, vec2((idx + 0.2 + p.x * 0.6) / 16.0, p.y)).r; }
+    aux: () => [glyphAtlas("0123456789XY")],
+    passes: [
+      {
+        // Mask of pixels near the key colour, smoothed over time (persistence).
+        id: "mask",
+        feedback: true,
+        inputs: ["input", "prev"],
+        frag: `
 void main() {
   vec3 c = texture(uTex0, vUv).rgb;
-  vec2 g = vec2(floor(u_cells * aspect()), u_cells);
+  float d = length(c - u_key) / 1.732;
+  float m = smoothstep(u_threshold, u_threshold - 0.08, d);
+  float prev = uHasPrev > 0.5 ? texture(uTex1, vUv).r : m;
+  fragColor = vec4(vec3(mix(m, prev, u_persistence)), 1.0);
+}`,
+      },
+      {
+        id: "out",
+        inputs: ["input", "mask"],
+        frag: `
+vec3 pal(float i) {
+  int p = int(u_palette + 0.5);
+  float h = fract(i * 0.618);
+  if (p == 0) return hsv2rgb(vec3(h, 0.9, 1.0));
+  if (p == 1) return mix(vec3(1.0, 0.15, 0.1), vec3(0.2, 1.0, 0.3), step(0.5, h));
+  if (p == 2) return vec3(0.9 + h * 0.1);
+  return hsv2rgb(vec3(h, 0.35, 1.0));
+}
+float glyph(vec2 p, float idx) { if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) return 0.0; return texture(uAux0, vec2((idx + 0.2 + p.x * 0.6) / 12.0, p.y)).r; }
+// Blob in cell: coverage and bounding box (min, max in cell-local 0..1).
+vec4 bbox(vec2 cell, vec2 g, out float cov) {
+  vec2 mn = vec2(1.0); vec2 mx = vec2(0.0); cov = 0.0;
+  for (int j = 0; j < 6; j++) for (int i = 0; i < 6; i++) {
+    vec2 l = (vec2(i, j) + 0.5) / 6.0;
+    float m = texture(uTex1, (cell + l) / g).r;
+    if (m > 0.5) { mn = min(mn, l - 0.08); mx = max(mx, l + 0.08); cov += 1.0 / 36.0; }
+  }
+  return vec4(mn, mx);
+}
+void main() {
+  vec4 c = texture(uTex0, vUv);
+  if (u_debug > 0.5) { fragColor = vec4(mix(c.rgb, vec3(1.0, 0.0, 0.0), texture(uTex1, vUv).r * 0.7), c.a); return; }
+  vec2 g = vec2(floor(10.0 * aspect() + 0.5), 10.0);
   vec2 cell = floor(vUv * g);
-  vec2 f = fract(vUv * g);
-  float t = u_animate > 0.5 ? floor(uTime * 8.0) : 0.0;
-  float line = 0.0; float fillA = 0.0; float txt = 0.0;
-  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-    vec2 cc = cell + vec2(float(i), float(j));
-    float k = interest(cc, g);
-    if (k < 1.0 - u_threshold || hash12(cc + uSeed) > 0.55) continue;
-    vec2 jit = (hash22(cc + t) - 0.5) * 0.15;
-    vec2 size = 0.4 + hash22(cc + 3.0) * 0.9;
-    vec2 q = (vUv * g - (cc + 0.5 + jit)) / size;
-    vec2 aq = abs(q);
-    float w = 1.5 / (uRes.y / g.y) / min(size.x, size.y);
-    float edge = step(max(aq.x, aq.y), 0.5) * step(0.5 - w * 1.5, max(aq.x, aq.y));
-    line = max(line, edge);
-    fillA = max(fillA, step(max(aq.x, aq.y), 0.5));
-    vec2 lp = (q - vec2(-0.5, 0.52)) * vec2(size.x * 6.0, size.y * 4.0) / vec2(0.62, 1.0);
-    float id = floor(hash12(cc) * 65535.0);
-    for (int d = 0; d < 4; d++) {
-      float digit = mod(floor(id / pow(16.0, float(3 - d))), 16.0);
-      txt = max(txt, glyph(lp - vec2(float(d), 0.0), digit) * u_labels);
+  vec2 cpx = uRes / g;
+  vec3 o = c.rgb;
+  float cov;
+  vec4 b = bbox(cell, g, cov);
+  if (cov > 0.04) {
+    vec3 col = u_randomPalette > 0.5 ? pal(hash12(cell + uSeed)) : u_boxColor;
+    vec2 l = fract(vUv * g);
+    vec2 mn = clamp(b.xy, 0.0, 1.0), mx = clamp(b.zw, 0.0, 1.0);
+    vec2 px = (l - mn) * cpx, size = (mx - mn) * cpx;
+    float th = u_thickness * refScale();
+    bool inBox = all(greaterThanEqual(px, vec2(0.0))) && all(lessThanEqual(px, size));
+    float edge = inBox ? step(min(min(px.x, px.y), min(size.x - px.x, size.y - px.y)), th) : 0.0;
+    int bt = int(u_boxType + 0.5);
+    if (bt == 1) { vec2 q = min(px, size - px); edge *= step(min(q.x, q.y), th) * step(max(q.x, q.y), min(size.x, size.y) * 0.25); }
+    if (bt == 2) { edge *= step(min(px.x, size.x - px.x), size.x * 0.12 + th); }
+    if (bt == 3) { edge *= step(0.5, fract((px.x + px.y) / (6.0 * refScale()))); }
+    int bl = int(u_boxBlend + 0.5);
+    vec3 bc = bl == 1 ? blendScreen(o, col) : bl == 2 ? abs(o - col) : bl == 3 ? o * col : col;
+    if (inBox) o = mix(o, bc, u_fill);
+    o = mix(o, bc, edge * u_outline);
+    // Centre marker.
+    vec2 cc = (mn + mx) * 0.5 * cpx;
+    vec2 d = l * cpx - cc;
+    float cs = u_centerSize * refScale();
+    int ct = int(u_centerType + 0.5);
+    float cm = ct == 1 ? step(length(d), cs) : ct == 2 ? step(abs(abs(d.x) - abs(d.y)), th) * step(max(abs(d.x), abs(d.y)), cs * 2.0) : ct == 3 ? step(min(abs(d.x), abs(d.y)), th * 0.5) * step(max(abs(d.x), abs(d.y)), cs * 2.0) : ct == 4 ? step(abs(max(abs(d.x), abs(d.y)) - cs), th * 0.5) : 0.0;
+    o = mix(o, col, cm);
+    // Caption: X### Y### of the blob centre.
+    int cp = int(u_captionPos + 0.5);
+    if (cp > 0) {
+      float ch = u_captionSize * refScale();
+      vec2 anchor = vec2(cp == 1 || cp == 7 || cp == 8 ? mn.x : cp == 3 || cp == 4 || cp == 5 ? mx.x : (mn.x + mx.x) * 0.5, cp <= 3 ? mx.y : cp >= 5 && cp <= 7 ? mn.y : (mn.y + mx.y) * 0.5) * cpx;
+      vec2 tp = (l * cpx - anchor - vec2(0.0, cp <= 3 ? 0.0 : -ch)) / vec2(ch * 0.6, ch);
+      vec2 center = (cell + (mn + mx) * 0.5) / g;
+      float X = floor(center.x * 999.0), Y = floor((1.0 - center.y) * 999.0);
+      float t = 0.0; float digits[8] = float[8](10.0, floor(X / 100.0), mod(floor(X / 10.0), 10.0), mod(X, 10.0), 11.0, floor(Y / 100.0), mod(floor(Y / 10.0), 10.0), mod(Y, 10.0));
+      for (int k = 0; k < 8; k++) t = max(t, glyph(tp - vec2(float(k), 0.0), digits[k]));
+      bool inCap = tp.x >= 0.0 && tp.x <= 8.0 && tp.y >= 0.0 && tp.y <= 1.0;
+      if (inCap) o = mix(o, vec3(0.0), u_captionBg);
+      o = mix(o, col, t);
     }
   }
-  // Links: thin lines from this cell's box to the next active cell to the right.
-  float k0 = interest(cell, g);
-  float k1 = interest(cell + vec2(1.0, 1.0), g);
-  if (k0 >= 1.0 - u_threshold && k1 >= 1.0 - u_threshold && hash12(cell + uSeed) <= 0.55 && hash12(cell + 1.0 + uSeed) <= 0.55) {
-    float dl = abs(f.y - f.x) * uRes.y / g.y;
-    line = max(line, step(dl, 1.0) * u_links);
+  // Links between neighbouring blobs.
+  int lt = int(u_lineType + 0.5);
+  if (lt > 0) {
+    float cov2; bbox(cell + vec2(1.0, 0.0), g, cov2);
+    float cov3; bbox(cell + vec2(0.0, 1.0), g, cov3);
+    vec2 l = fract(vUv * g) * cpx;
+    float th = max(u_thickness * 0.6, 0.8) * refScale();
+    float on = 0.0;
+    if (cov > 0.04 && cov2 > 0.04 && lt != 3) on = max(on, step(abs(l.y - cpx.y * 0.5), th));
+    if (cov > 0.04 && cov3 > 0.04 && lt == 1) on = max(on, step(abs(l.x - cpx.x * 0.5), th));
+    if (lt == 3 && cov > 0.04) { vec2 d = vUv - 0.5; vec2 n = normalize(vec2(-d.y, d.x)); on = max(on, step(abs(dot((vUv - (cell + 0.5) / g) * uRes, n)), th) * step(0.0, dot(d, (cell + 0.5) / g - 0.5))); }
+    int ls = int(u_lineStyle + 0.5);
+    float s = (l.x + l.y) / refScale();
+    if (ls == 1) on *= step(0.5, fract(s / 10.0));
+    if (ls == 2) on *= step(0.6, fract(s / 4.0));
+    vec3 lc = u_randomPalette > 0.5 ? pal(hash12(cell + uSeed)) : u_boxColor;
+    o = mix(o, lc, on * (ls == 3 ? 0.6 : 1.0));
   }
-  vec3 o = mix(c, u_tint, fillA * u_fill);
-  o = mix(o, u_tint, max(line, txt));
-  fragColor = vec4(o, 1.0);
-}`),
+  fragColor = vec4(sat(o), c.a);
+}`,
+      },
+    ],
   },
   {
     id: "layer-mix",

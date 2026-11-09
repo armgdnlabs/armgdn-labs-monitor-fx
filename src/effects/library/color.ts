@@ -1,5 +1,5 @@
 import { gradientLut, paletteTex } from "../../lib/textures";
-import { color, gradient, hero, range, select, single, toggle, type EffectDef } from "../types";
+import { color, gradient, group, hero, range, select, single, toggle, type EffectDef } from "../types";
 
 /** Palettes shared by Palette map and the retro/dither effects. */
 export const PALETTES: { name: string; colors: string[] }[] = [
@@ -25,6 +25,19 @@ export const PALETTES: { name: string; colors: string[] }[] = [
   { name: "Ocean blue", colors: ["#03111F", "#0B3A66", "#29A1FF", "#B8E4FF", "#F4FBFF"] },
   { name: "Faded copy", colors: ["#1F4D4A", "#3E8A7E", "#C9D46B", "#F3F0D8"] },
 ];
+/** Ten thermal palettes, one LUT row each (order matches the Thermal "Gradient type" list). */
+const THERMAL_RAMPS = [
+  "#000000@0,#2A0A5E@0.2,#8E1A7A@0.4,#E2462A@0.6,#FBB22B@0.8,#FFFBD9@1",
+  "#1A0B4D@0,#2B3BD9@0.2,#16C6E6@0.4,#59E05A@0.6,#F5D52A@0.8,#E8231C@1",
+  "#000000@0,#FFFFFF@1",
+  "#FFFFFF@0,#000000@1",
+  "#000814@0,#003566@0.35,#4CC9F0@0.7,#F1FAFF@1",
+  "#000000@0,#5C0A00@0.3,#D3202A@0.55,#FF8C1A@0.8,#FFF3B0@1",
+  "#00205B@0,#0077B6@0.25,#2BC56B@0.5,#F4E04D@0.75,#E5383B@1",
+  "#000A00@0,#0F3D12@0.4,#4CFF6E@0.8,#D9FFDD@1",
+  "#1F0047@0,#B30059@0.35,#FF6A00@0.65,#FFF700@1",
+  "#120B07@0,#5C3A1E@0.4,#C78B4A@0.75,#F5E3C3@1",
+];
 export const PALETTE_NAMES = PALETTES.map((p) => p.name);
 
 export const color_: EffectDef[] = [
@@ -32,39 +45,40 @@ export const color_: EffectDef[] = [
     id: "gradient-map",
     name: "Gradient map",
     category: "Color",
-    description: "Maps luminance onto an editable multi-stop gradient.",
+    description: "Maps luminance onto a gradient.",
     keywords: "gradient map colorize false color",
-    preview: "face:1",
     params: [
-      gradient("ramp", "Gradient", "#0A0A0A@0,#3A0CA3@0.3,#D3202A@0.62,#FFD166@0.85,#F7F2EC@1"),
-      hero("contrast", "Contrast", 0.2, 3, 1.1),
-      hero("offset", "Offset", -0.5, 0.5, 0),
-      range("mix", "Mix", 0, 1, 1),
-      toggle("reverse", "Reverse"),
+      gradient("ramp", "Gradient map", "#FF0000@0,#00FF00@0.5,#0000FF@1"),
+      hero("shift", "Gradient shift", -1, 1, 0),
+      hero("repeat", "Gradient repeat", 1, 8, 1, 1),
     ],
     aux: (v) => [gradientLut(String(v.ramp))],
     passes: single(`
 void main() {
   vec4 c = texture(uTex0, vUv);
-  float l = sat((luma(c.rgb) - 0.5) * u_contrast + 0.5 + u_offset);
-  if (u_reverse > 0.5) l = 1.0 - l;
-  fragColor = vec4(mix(c.rgb, lut1(uAux0, l, 0.0, 1.0), u_mix), c.a);
+  float l = luma(c.rgb) * u_repeat + u_shift;
+  // Repeats mirror so bands meet without hard seams.
+  l = u_repeat > 1.0 ? 1.0 - abs(1.0 - mod(l, 2.0)) : sat(l);
+  fragColor = vec4(lut1(uAux0, l, 0.0, 1.0), c.a);
 }`),
   },
   {
     id: "duotone",
     name: "Duotone",
     category: "Color",
-    description: "Two-ink print look: shadows and highlights colours with a tone curve.",
-    keywords: "two tone spot color",
-    preview: "room:1",
-    params: [color("dark", "Shadows", "#1E1B4B"), color("light", "Highlights", "#FF8A3D"), hero("contrast", "Contrast", 0.2, 3, 1.25), hero("balance", "Balance", -0.5, 0.5, 0), range("mix", "Mix", 0, 1, 1)],
+    description: "Two-colour mapping with a gamma per channel.",
+    keywords: "two color tone print",
+    params: [
+      color("start", "Start color", "#E63217"),
+      color("end", "End color", "#F4B642"),
+      ...group("Gamma", [range("rG", "Red gamma", 0.3, 3, 1), range("gG", "Green gamma", 0.3, 3, 1), range("bG", "Blue gamma", 0.3, 3, 1)]),
+    ],
     passes: single(`
 void main() {
   vec4 c = texture(uTex0, vUv);
-  float l = sat((luma(c.rgb) - 0.5) * u_contrast + 0.5 + u_balance);
-  l = l * l * (3.0 - 2.0 * l);
-  fragColor = vec4(mix(c.rgb, mix(u_dark, u_light, l), u_mix), c.a);
+  float l = luma(c.rgb);
+  vec3 t = pow(vec3(l), vec3(u_rG, u_gG, u_bG));
+  fragColor = vec4(mix(u_start, u_end, t), c.a);
 }`),
   },
   {
@@ -87,78 +101,96 @@ void main() {
     id: "monochrome",
     name: "Monochrome",
     category: "Color",
-    description: "Black and white with a channel filter (like a coloured lens filter), contrast and tint.",
-    keywords: "black white grayscale greyscale filter",
-    preview: "hands:0",
+    description: "Black and white from a weighted channel mix, optionally tinted.",
+    keywords: "black white grayscale channel mixer",
     params: [
-      select("filter", "Lens filter", ["Neutral", "Red", "Orange", "Yellow", "Green", "Blue"]),
-      hero("contrast", "Contrast", 0.5, 2.5, 1.2),
-      hero("brightness", "Brightness", -0.3, 0.3, 0),
-      color("tint", "Tint", "#F2E8DA"),
-      range("tintAmount", "Tint amount", 0, 1, 0.35),
+      hero("rW", "Red weight", -1, 2, 0.683, 0.001),
+      hero("gW", "Green weight", -1, 2, 1.155, 0.001),
+      hero("bW", "Blue weight", -1, 2, 0.199, 0.001),
+      toggle("normalize", "Normalize weights", 1),
+      color("tint", "Tint color", "#FFFFFF"),
     ],
     passes: single(`
 void main() {
   vec4 c = texture(uTex0, vUv);
-  int f = int(u_filter + 0.5);
-  vec3 w = vec3(0.2126, 0.7152, 0.0722);
-  if (f == 1) w = vec3(0.8, 0.2, 0.0);
-  if (f == 2) w = vec3(0.6, 0.35, 0.05);
-  if (f == 3) w = vec3(0.45, 0.5, 0.05);
-  if (f == 4) w = vec3(0.15, 0.75, 0.1);
-  if (f == 5) w = vec3(0.1, 0.25, 0.65);
-  float l = dot(c.rgb, w) + u_brightness;
-  l = sat((l - 0.5) * u_contrast + 0.5);
-  vec3 o = mix(vec3(l), vec3(l) * u_tint * 1.08, u_tintAmount);
-  fragColor = vec4(sat(o), c.a);
+  vec3 w = vec3(u_rW, u_gW, u_bW);
+  if (u_normalize > 0.5) w /= max(abs(w.r + w.g + w.b), 1e-3);
+  // Negative mixes give a negative image; its magnitude keeps it visible instead of clipping to black.
+  float l = abs(dot(c.rgb, w));
+  fragColor = vec4(sat(vec3(l) * u_tint), c.a);
 }`),
   },
   {
     id: "thermal",
     name: "Thermal",
     category: "Color",
-    description: "Heat-camera false colour with a softened, blooming sensor.",
-    keywords: "heat infrared flir false color",
-    preview: "dancer:0",
+    description: "Heat-camera false colour with tone controls and edge glow.",
+    keywords: "heat infrared ironbow flir",
     params: [
-      select("palette", "Palette", ["Ironbow", "Rainbow", "White hot", "Arctic", "Lava"]),
-      hero("contrast", "Contrast", 0.5, 3, 1.4),
-      hero("offset", "Offset", -0.5, 0.5, 0.05),
-      range("blur", "Sensor blur", 0, 12, 3, 0.1),
-      range("noise", "Sensor noise", 0, 0.2, 0.04),
+      toggle("invert", "Invert", 1),
+      ...group("Tones", [range("shadows", "Shadows", -0.5, 0.5, -0.5), range("midtones", "Midtones", -0.5, 0.5, -0.22), range("highlights", "Highlights", -0.5, 0.5, -0.05)]),
+      select("type", "Gradient type", ["Ironbow", "Rainbow", "White hot", "Black hot", "Arctic", "Lava", "Medical", "Night vision", "Predator", "Sepia heat"], 3),
+      hero("shift", "Gradient shift", 0, 1, 0),
+      hero("repeat", "Gradient repeat", 0.1, 10, 0.7, 0.1),
+      toggle("edges", "Show edges", 1),
+      range("edgeRange", "Edge range", 0.15, 2, 0.5),
     ],
-    animated: true,
-    aux: () => [gradientLut(
-      "#000010@0,#2A0A6B@0.2,#9C1E8C@0.4,#E8452C@0.62,#FFB000@0.82,#FFFDE0@1",
-      "#000080@0,#0050FF@0.2,#00E0C0@0.4,#40FF20@0.55,#FFE000@0.72,#FF3000@0.88,#FFFFFF@1",
-      "#000000@0,#FFFFFF@1",
-      "#04060F@0,#0E2D5C@0.3,#1F8FBF@0.6,#C8F3FF@0.85,#FFFFFF@1",
-      "#000000@0,#3B0000@0.25,#B01200@0.5,#FF7A00@0.75,#FFF7A0@1",
-    )],
+    aux: () => [gradientLut(...THERMAL_RAMPS)],
     passes: single(`
 void main() {
-  vec4 c = blur13(uTex0, vUv, refPx(u_blur));
-  float l = luma(c.rgb) + snoise(refCoord(vUv) * 0.6 + uTime * 20.0) * u_noise;
-  l = sat((l - 0.5) * u_contrast + 0.5 + u_offset);
-  fragColor = vec4(lut1(uAux0, l, u_palette, 5.0), c.a);
+  vec4 c = texture(uTex0, vUv);
+  float l = luma(blur13(uTex0, vUv, refPx(2.0)).rgb);
+  if (u_invert > 0.5) l = 1.0 - l;
+  // Three-band tone shaping before the palette.
+  l += u_shadows * (1.0 - smoothstep(0.0, 0.5, l)) * 0.6 + u_midtones * (1.0 - abs(l - 0.5) * 2.0) * 0.6 + u_highlights * smoothstep(0.5, 1.0, l) * 0.6;
+  float x = sat(l) * u_repeat + u_shift;
+  x = u_repeat > 1.0 ? 1.0 - abs(1.0 - mod(x, 2.0)) : fract(min(x, 0.9999));
+  vec3 o = lut1(uAux0, x, u_type, 10.0);
+  if (u_edges > 0.5) {
+    float e = sobel(uTex0, vUv, refPx(u_edgeRange * 2.0)).x;
+    o += smoothstep(0.1, 0.6, e) * 0.5;
+  }
+  fragColor = vec4(sat(o), c.a);
 }`),
   },
   {
     id: "threshold",
     name: "Threshold",
     category: "Color",
-    description: "Hard two-colour cut with optional noise for a photocopied edge.",
-    keywords: "black white binary stencil",
-    preview: "bw:0",
-    params: [hero("level", "Level", 0, 1, 0.5), hero("softness", "Softness", 0, 0.3, 0.02), range("noise", "Grit", 0, 0.5, 0.08), color("ink", "Ink", "#0A0A0A"), color("paper", "Paper", "#F7F2EC")],
+    description: "Hard black and white, with edge mode, offset copies and outlines.",
+    keywords: "black white 1-bit cut",
+    params: [
+      hero("threshold", "Threshold", 0, 255, 128, 1),
+      toggle("edgeMode", "Edge mode"),
+      ...group("Offset", [range("offset", "Offset amount", 0, 10, 0, 1), range("distance", "Distance", 1, 50, 1, 1)]),
+      ...group("Outline", [range("outline", "Outline", 0, 10, 0, 1), range("outlineStrength", "Outline strength", 0, 1, 1), select("outlineType", "Outline type", ["Inner", "Outer", "Both"])]),
+      ...group("Blend", [range("blendStrength", "Blend strength", 0, 1, 1), select("blendMode", "Blend mode", ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Replace"], 5), color("color", "Color", "#000000")]),
+    ],
     passes: single(`
+float bw(vec2 uv) {
+  float l = luma(texture(uTex0, uv).rgb);
+  if (u_edgeMode > 0.5) l = 1.0 - sat(sobel(uTex0, uv, refPx(1.0 + u_distance * 0.2)).x * 2.0);
+  return step(u_threshold / 255.0, l);
+}
 void main() {
   vec4 c = texture(uTex0, vUv);
-  vec2 px = refCoord(vUv);
-  float n = (snoise(px * 0.35 + seedOffset()) * 0.6 + (hash12(floor(px * 1.5)) - 0.5) * 0.8) * u_noise;
-  float l = luma(c.rgb) + n;
-  float t = smoothstep(u_level - u_softness - 0.001, u_level + u_softness + 0.001, l);
-  fragColor = vec4(mix(u_ink, u_paper, t), c.a);
+  float b = bw(vUv);
+  // Offset: extra copies stepped diagonally, combined as ink (darkest wins).
+  for (int i = 1; i <= 10; i++) { if (float(i) > u_offset) break; b = min(b, bw(vUv - refPx(u_distance * float(i)))); }
+  if (u_outline > 0.5) {
+    float r = u_outline;
+    float mn = 1.0; float mx = 0.0;
+    for (int k = 0; k < 8; k++) { float a = float(k) * TAU / 8.0; float s = bw(vUv + vec2(cos(a), sin(a)) * refPx(r)); mn = min(mn, s); mx = max(mx, s); }
+    int t = int(u_outlineType + 0.5);
+    float edge = t == 0 ? b * (1.0 - mn) : t == 1 ? (1.0 - b) * mx : step(0.5, mx - mn);
+    if (edge > 0.5) b = mix(b, 0.0, u_outlineStrength);
+  }
+  vec3 ink = u_color;
+  vec3 paper = vec3(1.0);
+  vec3 t = mix(ink, paper, b);
+  int m = int(u_blendMode + 0.5);
+  vec3 o = m == 0 ? mix(c.rgb, t, 1.0 - b) : m == 1 ? c.rgb * t : m == 2 ? blendScreen(c.rgb, 1.0 - t) : m == 3 ? blendOverlay(c.rgb, t) : m == 4 ? min(c.rgb, t) : m == 5 ? max(c.rgb, t) : t;
+  fragColor = vec4(mix(c.rgb, o, u_blendStrength), c.a);
 }`),
   },
   {

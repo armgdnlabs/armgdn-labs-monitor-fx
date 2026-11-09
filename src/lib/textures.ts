@@ -205,18 +205,18 @@ export const TEXT_FONTS = [
   { label: "Doto", css: `"Doto", monospace` },
 ];
 
-export function textTexture(textValue: string, fontIndex: number, weight: number, tracking: number, align: number): AuxSpec {
+export function textTexture(textValue: string, fontIndex: number, weight: number, tracking: number, align: number, lineHeight = 1.08, italic = false): AuxSpec {
   const font = TEXT_FONTS[Math.max(0, Math.min(TEXT_FONTS.length - 1, Math.round(fontIndex)))];
   return {
     // Font status is part of the key so the texture is rebuilt once web fonts finish loading.
-    key: `text:${font.label}:${weight}:${tracking}:${align}:${fontsStatus()}:${textValue}`,
+    key: `text:${font.label}:${weight}:${tracking}:${align}:${lineHeight}:${italic}:${fontsStatus()}:${textValue}`,
     build: () => {
       const lines = String(textValue || " ").split("\n");
       const size = 160;
-      const lineH = size * 1.08;
+      const lineH = size * lineHeight;
       const c = document.createElement("canvas");
       const ctx = c.getContext("2d")!;
-      const fontStr = `${Math.round(weight)} ${size}px ${font.css}`;
+      const fontStr = `${italic ? "italic " : ""}${Math.round(weight)} ${size}px ${font.css}`;
       ctx.font = fontStr;
       const spacing = tracking * size;
       const measure = (l: string) => ctx.measureText(l).width + Math.max(0, Array.from(l).length - 1) * spacing;
