@@ -53,7 +53,7 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
   ]),
   p("paper-towel-print", "Paper towel print", "Print & paper", ["portraits", "editorial"], [
     L("contrast", { contrast: 0.15, fade: 0.06 }),
-    L("paper-texture", { kind: 5, opacity: 0.85, scale: 1.1, blend: 4, relief: 1.3, displace: 0.5 }),
+    L("paper-texture", { kind: 7, opacity: 0.85, scale: 1.1, blend: 4, relief: 1.3, displace: 0.5 }),
     L("gaussian-blur", { radius: 2 }, { opacity: 0.5 }),
   ]),
   p("torn-photo", "Torn photo", "Print & paper", ["nature", "film"], [
@@ -65,7 +65,7 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
   p("faded-copy", "Faded copy", "Print & paper", ["nature", "meadow"], [
     L("dither", { pattern: 13, palette: 20, colors: 4, strength: 0.9, pixel: 1, distance: 1, gamma: 0.9 }),
     L("gaussian-blur", { radius: 3 }, { opacity: 0.55 }),
-    L("paper-texture", { kind: 3, opacity: 0.6, scale: 1, blend: 1 }),
+    L("paper-texture", { kind: 4, opacity: 0.6, scale: 1, blend: 1 }),
   ]),
   p("receipt-scan", "Receipt scan", "Print & paper", ["portraits", "editorial"], [
     L("blur-sharp", { soften: 0.2, detail: 1.8, radius: 6 }),
@@ -79,13 +79,13 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     L("text", { content: "ORDER RECEIPT #3498", size: 0.025, y: 0.95, fill: "#111111" }),
   ]),
   p("thin-paper-print", "Thin paper print", "Print & paper", ["editorial", "portraits"], [
-    L("paper-texture", { kind: 3, opacity: 0.9, scale: 1.6, blend: 3, relief: 0.8, displace: 0.7 }),
+    L("paper-texture", { kind: 4, opacity: 0.9, scale: 1.6, blend: 3, relief: 0.8, displace: 0.7 }),
     L("paper-scan", { paper: 0.7, toner: 0.15, lamp: 0.4, soft: 0.25, fade: 0.2 }),
     L("noise", { amount: 0.45, size: 0.6, chroma: 0 }),
   ]),
   p("riso-print", "Riso print", "Print & paper", ["editorial", "botanic"], [
     L("risograph", { inks: 1, ink1: "#FF48B0", ink2: "#00A95C", ink3: "#3255A4", paper: "#F0EDE6", grain: 0.7, misreg: 6, screen: 0 }),
-    L("paper-texture", { kind: 3, opacity: 0.5, blend: 1 }),
+    L("paper-texture", { kind: 4, opacity: 0.5, blend: 1 }),
   ]),
   p("grainy-riso", "Grainy riso", "Print & paper", ["botanic", "butterfly"], [
     L("risograph", { inks: 0, ink1: "#FF6C2F", ink2: "#5E2D79", paper: "#F5F2E8", grain: 0.95, misreg: 3, screen: 0, density: 1.1 }),
@@ -114,12 +114,12 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     L("paper-texture", { kind: 0, opacity: 1, scale: 1, blend: 4, relief: 1.2, displace: 0.6 }),
   ]),
   p("folded-paper", "Folded paper", "Print & paper", ["editorial", "portraits"], [
-    L("paper-texture", { kind: 1, opacity: 1, scale: 1, blend: 4, relief: 1.2, displace: 0.4, variation: 7 }),
+    L("paper-texture", { kind: 2, opacity: 1, scale: 1, blend: 4, relief: 1.2, displace: 0.4, variation: 7 }),
     L("paper-scan", { paper: 0.3, toner: 0.1, lamp: 0.25, soft: 0.1, fade: 0.1 }),
   ]),
   p("tracing-paper", "Tracing paper", "Print & paper", ["butterfly", "botanic"], [
     L("gaussian-blur", { radius: 6 }, { opacity: 0.7 }),
-    L("paper-texture", { kind: 2, opacity: 0.85, scale: 1, blend: 2, relief: 0.6, tint: "#DCE6F2", tintAmount: 0.5 }),
+    L("paper-texture", { kind: 5, opacity: 0.85, scale: 1, blend: 2, relief: 0.6, tint: "#DCE6F2", tintAmount: 0.5 }),
     L("contrast", { contrast: -0.35, fade: 0.2 }),
   ]),
   p("emboss-dirt", "Emboss dirt", "Print & paper", ["sculpture", "botanic"], [
@@ -133,7 +133,7 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     L("oil-paint", { brush: 10, impasto: 0.9, saturation: 1.1 }),
     L("gradient-map", { ramp: "#1A0B24@0,#5B2C6F@0.35,#C77DBA@0.7,#F7D6EC@1", contrast: 1.05, mix: 0.85 }),
     L("bloom", { intensity: 0.8, threshold: 0.3, radius: 40 }),
-    L("paper-texture", { kind: 9, opacity: 0.35, blend: 3 }),
+    L("paper-texture", { kind: 11, opacity: 0.35, blend: 3 }),
   ]),
   p("cross-hatch", "Cross hatch", "Drawing & painting", ["vase", "stilllife"], [
     L("cross-hatch", { spacing: 6, weight: 0.4, angle: 45, layers: 4, edges: 0.5, wobble: 0.2 }),
@@ -141,7 +141,7 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
   ]),
   p("pencil-drawing", "Pencil drawing", "Drawing & painting", ["portraits", "editorial"], [
     L("pencil", { lines: 1.8, shading: 0.7, detail: 0.96, strokeAngle: 35, tooth: 0.6, graphite: "#3A352E", paper: "#E9E2D3" }),
-    L("paper-texture", { kind: 3, opacity: 0.5, blend: 1 }),
+    L("paper-texture", { kind: 4, opacity: 0.5, blend: 1 }),
   ]),
   p("cube-hatch", "Cube hatch", "Drawing & painting", ["portraits", "editorial"], [
     L("halftone", { mode: 0, shape: 3, cell: 4, gain: 0.1, misreg: 0.5 }),
@@ -171,7 +171,7 @@ export const BUILTIN_PRESETS: BuiltinPreset[] = [
     L("oil-paint", { brush: 7, impasto: 1.1, saturation: 0.9, canvas: 0.5 }),
     L("color-grading", { lift: "#2A1E14", liftAmt: 0.4, gain: "#F2D9A8", gainAmt: 0.35, saturation: 0.85 }),
     L("vignette", { amount: 0.6, radius: 0.5, feather: 0.8 }),
-    L("paper-texture", { kind: 6, opacity: 0.35, blend: 1, scale: 1.4 }),
+    L("paper-texture", { kind: 8, opacity: 0.35, blend: 1, scale: 1.4 }),
   ]),
 
   /* ── Film & TV ─────────────────────────────────────────────────────── */

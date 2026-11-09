@@ -2,6 +2,26 @@ import { glyphAtlas, gradientLut, imageTexture, textTexture, TEXT_FONTS } from "
 import { angle, color, gradient, group, hero, image, range, select, single, text, toggle, type EffectDef } from "../types";
 import { BLEND_MODES } from "../../engine/glsl";
 
+/**
+ * Photographed surfaces for the Texture effect (Unsplash, free licence; credited in the README).
+ * Image ids are hot-linked from images.unsplash.com as the Unsplash guidelines require.
+ */
+export const TEXTURES = [
+  { name: "Crumpled paper", id: "1776278515793-c4d7fbf04369", by: "sigmund" },
+  { name: "Crumpled kraft", id: "1603484477859-abe6a73f9366", by: "sjobjio" },
+  { name: "Folded paper", id: "1691415780572-de7c176a3b18", by: "bartco86" },
+  { name: "Lined paper", id: "1783700697126-8055c3c15baa", by: "umuthasanoglu" },
+  { name: "Thin paper", id: "1737276746515-19ea864a6b80", by: "sanches812" },
+  { name: "Tracing paper", id: "1707134657472-51902d2854a4", by: "heathergreengreen" },
+  { name: "Cardboard", id: "1776278515671-fe179ba9cfd3", by: "sigmund" },
+  { name: "Paper towel", id: "1771231591303-8e0daa821513", by: "msaimakin" },
+  { name: "Cracked paint", id: "1475965894430-b05c9d13568a", by: "creativejunkie" },
+  { name: "Broken glass", id: "1767044202331-c3a0a7cbdf43", by: "leftfield_corn" },
+  { name: "Dust", id: "1768956463493-a8118a41b629", by: "linusbelanger" },
+  { name: "Linen", id: "1764437835706-ba9d63250bd2", by: "loganvoss" },
+];
+const textureUrl = (i: number) => `https://images.unsplash.com/photo-${(TEXTURES[i] ?? TEXTURES[0]).id}?w=2000&q=80&auto=format`;
+
 const DEFAULT_MIX_IMAGE = "https://images.unsplash.com/photo-1547070451-ce386c65160a?w=1600&q=80&auto=format";
 
 export const overlay: EffectDef[] = [
@@ -60,86 +80,51 @@ void main() {
     id: "paper-texture",
     name: "Texture",
     category: "Overlay",
-    description: "Procedural surfaces laid over the image: crumpled, folded, tracing and thin paper, cardboard, paper towel, cracked paint, broken glass, dust and canvas. Blend, scale and rotate them like a texture layer.",
-    keywords: "paper crumpled folded tracing overlay texture surface cracks glass canvas towel",
+    description: "Real photographed surfaces (Unsplash) laid over the image: crumpled, folded, lined, thin and tracing paper, cardboard, paper towel, cracked paint, broken glass, dust and linen. The texture is neutralised so it adds relief and grain without shifting exposure.",
+    keywords: "paper crumpled folded tracing overlay texture surface cracks glass canvas towel linen dust",
     preview: "editorial:12",
     params: [
-      select("kind", "Texture", ["Crumpled paper", "Folded paper", "Tracing paper", "Thin paper", "Cardboard", "Paper towel", "Cracked paint", "Broken glass", "Dust & scratches", "Canvas"]),
+      select("kind", "Texture", TEXTURES.map((t) => t.name)),
       hero("opacity", "Opacity", 0, 1, 0.8),
-      hero("scale", "Scale", 0.25, 4, 1),
+      hero("scale", "Scale", 0.5, 3, 1),
       range("rotation", "Rotation", -180, 180, 0, 1, { unit: "°" }),
-      select("blend", "Blend", ["Overlay", "Multiply", "Screen", "Soft light", "Emboss (light)"]),
-      range("relief", "Relief", 0, 2, 1),
-      range("displace", "Displace image", 0, 1, 0.25),
-      color("tint", "Paper tint", "#F2EEE6"),
-      range("tintAmount", "Tint amount", 0, 1, 0),
-      range("variation", "Variation", 0, 100, 0, 1),
+      select("blend", "Blend", ["Overlay", "Multiply", "Screen", "Soft light", "Light relief"]),
+      range("contrast", "Texture contrast", 0, 3, 1.8),
+      range("displace", "Displace image", 0, 1, 0.2),
+      range("color", "Texture colour", 0, 1, 0),
     ],
+    aux: (v) => [imageTexture(textureUrl(Number(v.kind) | 0))],
     passes: single(`
-float creases(vec2 p) {
-  // Crumpled paper: sharp ridges from layered Voronoi cell borders.
-  vec2 a = worley(p * 3.0); vec2 b = worley(p * 7.0 + 3.1); vec2 c = worley(p * 15.0 + 7.7);
-  return (a.y - a.x) * 0.55 + (b.y - b.x) * 0.3 + (c.y - c.x) * 0.15;
+vec2 texUv(vec2 uv) {
+  // Cover-fit the photo to the frame, then scale and rotate around the centre.
+  vec2 p = (uv - 0.5) * vec2(aspect(), 1.0);
+  p = rot(radians(u_rotation)) * p / u_scale;
+  float ta = uAuxRes0.x / max(uAuxRes0.y, 1.0);
+  // Height-based cover: the texture always fills the frame, whatever either aspect is.
+  float s = max(1.0, aspect() / ta);
+  return p / vec2(s * ta, s) + 0.5;
 }
-float heightAt(vec2 p, int k, float s) {
-  if (k == 0) return creases(p) * 1.2 + fbm(p * 18.0) * 0.08;
-  if (k == 1) {
-    // Folded: a few straight folds with soft shading on either side.
-    float h = 0.0;
-    for (int i = 0; i < 4; i++) {
-      float fi = float(i);
-      vec2 n = normalize(vec2(cos(fi * 2.3 + s), sin(fi * 2.3 + s)));
-      float d = dot(p - vec2(0.5 + 0.2 * sin(fi * 1.7 + s), 0.5 + 0.2 * cos(fi * 2.9 + s)), n);
-      h += exp(-abs(d) * 40.0) * (mod(fi, 2.0) * 2.0 - 1.0) * 0.6 + smoothstep(0.0, 0.3, abs(d)) * 0.05;
-    }
-    return h + fbm(p * 30.0) * 0.05;
-  }
-  if (k == 2) return fbm(p * 6.0) * 0.25 + fbm(p * vec2(80.0, 12.0)) * 0.1;
-  if (k == 3) return fbm(p * vec2(120.0, 30.0)) * 0.25 + fbm(p * 4.0) * 0.2;
-  if (k == 4) return abs(sin(p.y * 60.0)) * 0.3 + fbm(p * 40.0) * 0.25;
-  if (k == 5) {
-    // Paper towel: embossed swirl quilting.
-    vec2 q = p * 9.0; vec2 f = fract(q) - 0.5;
-    float r = length(f);
-    float sw = sin(r * 30.0 - atan(f.y, f.x) * 2.0) * 0.5 + 0.5;
-    return sw * smoothstep(0.5, 0.3, r) * 0.6 + fbm(p * 60.0) * 0.15;
-  }
-  if (k == 6) { vec2 w = worley(p * 6.0); return smoothstep(0.0, 0.06, w.y - w.x) * 0.8 + fbm(p * 12.0) * 0.2; }
-  if (k == 7) { vec2 w = worley(p * 2.5 + 1.3); return (1.0 - smoothstep(0.0, 0.02, w.y - w.x)) + w.x * 0.3; }
-  if (k == 8) {
-    float d = step(0.9985, hash12(floor(p * 900.0)));
-    float sc = step(0.995, hash11(floor(p.x * 300.0))) * step(0.3, fbm(vec2(p.x * 300.0, p.y * 3.0)));
-    return d + sc * 0.7 + fbm(p * 5.0) * 0.1;
-  }
-  vec2 q = p * vec2(140.0, 140.0);
-  return (sin(q.x) * 0.5 + 0.5) * (sin(q.y) * 0.5 + 0.5) * 0.4 + fbm(p * 30.0) * 0.2;
-}
+float tl(vec2 uv) { return luma(texture(uAux0, uv).rgb); }
 void main() {
-  int k = int(u_kind + 0.5);
-  float s = u_variation * 0.173;
-  vec2 p = vUv - 0.5;
-  p.x *= aspect();
-  p = rot(radians(u_rotation)) * p / u_scale + 0.5 + s;
-  float e = 0.0015 / u_scale;
-  float h = heightAt(p, k, s);
-  float hx = heightAt(p + vec2(e, 0.0), k, s) - h;
-  float hy = heightAt(p + vec2(0.0, e), k, s) - h;
-  vec2 grad = vec2(hx, hy) / e;
-  vec3 n = normalize(vec3(-grad * 0.12 * u_relief, 1.0));
-  float light = dot(n, normalize(vec3(-0.5, 0.6, 0.65))) * 0.5 + 0.5;
-  vec2 duv = vUv + grad * 0.00025 * u_displace / u_scale;
-  vec4 c = texture(uTex0, duv);
-  float tex = sat(light);
-  if (k == 7) tex = mix(tex, 1.0 - h, 0.5);
-  vec3 t3 = mix(vec3(tex), vec3(tex) * u_tint, u_tintAmount);
+  vec2 tuv = texUv(vUv);
+  vec3 tex = texture(uAux0, tuv).rgb;
+  // Local mean of the texture (wide 9-tap) so the overlay is centred on mid-grey.
+  float m = 0.0;
+  for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) m += tl(tuv + vec2(float(i), float(j)) * 0.04);
+  m /= 9.0;
+  float d = (luma(tex) - m) * u_contrast;
+  // Relief from the photo itself: its luminance gradient lights the surface and nudges the image.
+  vec2 e = 1.5 / uAuxRes0;
+  vec2 grad = vec2(tl(tuv + vec2(e.x, 0.0)) - tl(tuv - vec2(e.x, 0.0)), tl(tuv + vec2(0.0, e.y)) - tl(tuv - vec2(0.0, e.y)));
+  vec4 c = texture(uTex0, vUv + grad * 0.02 * u_displace);
+  vec3 t3 = mix(vec3(0.5 + d), 0.5 + (tex - m) * u_contrast, u_color);
   int b = int(u_blend + 0.5);
   vec3 o;
-  if (b == 0) o = blendOverlay(c.rgb, t3);
-  else if (b == 1) o = c.rgb * (t3 * 0.6 + 0.4) * 1.25;
-  else if (b == 2) o = blendScreen(c.rgb, t3 * 0.7);
-  else if (b == 3) o = blendSoftLight(c.rgb, t3);
-  else o = c.rgb * (0.45 + light * 1.1);
-  o = mix(o, o * u_tint, u_tintAmount * 0.6);
+  if (b == 0) o = blendOverlay(c.rgb, sat(t3));
+  else if (b == 1) o = c.rgb * sat(mix(vec3(1.0 + min(d, 0.0) * 2.0), tex / max(m, 0.05), u_color));
+  else if (b == 2) o = blendScreen(c.rgb, sat(vec3(max(d, 0.0) * 2.0)));
+  else if (b == 3) o = blendSoftLight(c.rgb, sat(t3));
+  else o = c.rgb * (1.0 + dot(grad, vec2(-0.7, 0.7)) * 4.0 * u_contrast + d * 0.5);
   fragColor = vec4(mix(c.rgb, sat(o), u_opacity), c.a);
 }`),
   },

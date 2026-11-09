@@ -87,4 +87,4 @@ Params become `u_<key>` uniforms. Use `refPx()` / `refScale()` for sizes so prev
 
 ## Credits
 
-Built by ARMGDN LABS. Sample photography from [Unsplash](https://unsplash.com), credited in-app on every use. Code: MIT. The ARMGDN marks are not covered by the code licence.
+Built by ARMGDN LABS. Sample photography from [Unsplash](https://unsplash.com), credited in-app on every use. Texture photos (Unsplash): @sigmund, @sjobjio, @bartco86, @umuthasanoglu, @sanches812, @heathergreengreen, @msaimakin, @creativejunkie, @leftfield_corn, @linusbelanger, @loganvoss. Code: MIT. The ARMGDN marks are not covered by the code licence.
