@@ -67,6 +67,8 @@ export function EditorPage() {
     } else if (effect && getEffect(effect)) {
       ed.addLayer(effect);
     }
+    // Links are one-shot: once applied, clear them so a reload starts clean (no layers).
+    if (window.location.hash) history.replaceState(null, "", window.location.pathname + window.location.search);
   }, []);
 
   const isMobile = useIsMobile();
