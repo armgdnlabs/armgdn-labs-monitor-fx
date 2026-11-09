@@ -13,7 +13,7 @@ import { exportBatch, pickVideoMime } from "../../engine/export";
 import { downloadBlob } from "../../lib/media";
 import { sourceFromUrl } from "../../lib/source";
 import { NEWSLETTER_URL, REPO_URL, shareUrl, subscribeNewsletter } from "../../services/api";
-import { EFFECTS } from "../../effects/registry";
+import { LIBRARY } from "../../effects/registry";
 import { BUILTIN_PRESETS } from "../../effects/presets";
 import { UNSPLASH_URL } from "../../data/photos";
 
@@ -279,7 +279,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
         <p className="font-serif italic text-fg-2">The Chaos to Create.</p>
       </div>
       <div className="flex flex-col gap-2 text-[11px] text-fg-2 leading-relaxed hair-t pt-3">
-        <p>An open-source FX engine for images and video: load media, stack {EFFECTS.length} GPU effects as layers, start from {BUILTIN_PRESETS.length} presets, export at full resolution. Free, no watermark, no locked features.</p>
+        <p>An open-source FX engine for images and video: load media, stack {LIBRARY.length} GPU effects as layers, start from {BUILTIN_PRESETS.length} presets, export at full resolution. Free, no watermark, no locked features.</p>
         <p>Everything runs on your GPU in the browser via WebGL 2. Your media never leaves your machine.</p>
         <p>Sample photography from <a className="underline" href={UNSPLASH_URL} target="_blank" rel="noreferrer">Unsplash</a>, credited on every use.</p>
       </div>

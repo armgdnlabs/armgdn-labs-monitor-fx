@@ -37,7 +37,7 @@ export const draw: EffectDef[] = [
   {
     id: "pencil",
     name: "Pencil sketch",
-    category: "Draw",
+    category: "Print",
     description: "Graphite drawing: XDoG contour lines with directional shading strokes on toothy paper.",
     keywords: "sketch drawing graphite xdog lines",
     preview: "woman:5",
@@ -72,7 +72,7 @@ void main() {
   {
     id: "cross-hatch",
     name: "Cross hatch",
-    category: "Draw",
+    category: "Print",
     description: "Pen-and-ink hatching: up to four line layers build up tone, plus contour edges.",
     keywords: "hatching pen ink engraving comic",
     preview: "vase:1",
@@ -111,7 +111,7 @@ void main() {
   {
     id: "stipple",
     name: "Stippling",
-    category: "Draw",
+    category: "Print",
     description: "Dot-by-dot shading: jittered dots grow with darkness, never overlapping the grid.",
     keywords: "dots pointillist pen ink stipple",
     preview: "man:3",
@@ -147,7 +147,7 @@ void main() {
   {
     id: "pointillism",
     name: "Pointillism",
-    category: "Draw",
+    category: "Print",
     description: "Neo-impressionist colour dots in two offset layers, with optional complementary flecks.",
     keywords: "seurat dots painting colour",
     preview: "mountain:3",
@@ -189,7 +189,7 @@ void main() {
   {
     id: "oil-paint",
     name: "Oil paint",
-    category: "Draw",
+    category: "Print",
     description: "Kuwahara-filtered colour patches with impasto brush relief lit from the side.",
     keywords: "painting kuwahara brush impasto canvas",
     preview: "blossom:1",
@@ -218,7 +218,7 @@ void main() {
   {
     id: "watercolor",
     name: "Watercolour",
-    category: "Draw",
+    category: "Print",
     description: "Wet-in-wet washes: soft colour pools, pigment-darkened edges and paper granulation.",
     keywords: "aquarelle wash paint wet",
     preview: "greenhouse:0",
@@ -247,7 +247,7 @@ void main() {
   {
     id: "scribble",
     name: "Scribble",
-    category: "Draw",
+    category: "Print",
     description: "Curly ballpoint scribbles that pile up in the shadows, following a flow field.",
     keywords: "ballpoint pen doodle lines flow",
     preview: "meadow:0",
@@ -282,7 +282,7 @@ void main() {
   {
     id: "pastel",
     name: "Pastel",
-    category: "Draw",
+    category: "Print",
     description: "Soft chalk pastel: blended colour fields that skip over the paper's tooth.",
     keywords: "chalk crayon soft drawing",
     preview: "woman:0",
@@ -310,7 +310,7 @@ void main() {
   {
     id: "spray-paint",
     name: "Spray paint",
-    category: "Draw",
+    category: "Print",
     description: "Stencilled aerosol: posterised shapes with speckled overspray and drips.",
     keywords: "graffiti stencil aerosol street art",
     preview: "man:4",
@@ -349,7 +349,7 @@ void main() {
   {
     id: "edge-detect",
     name: "Edge detect",
-    category: "Draw",
+    category: "Print",
     description: "Sobel edges as clean line art, inverted ink, coloured edges or a neon glow.",
     keywords: "outline lines sobel neon",
     preview: "architecture:0",
@@ -379,7 +379,7 @@ void main() {
   {
     id: "contour",
     name: "Contour lines",
-    category: "Draw",
+    category: "Print",
     description: "Topographic iso-lines traced through the image's brightness.",
     keywords: "topographic isolines map elevation",
     preview: "desert:0",
@@ -411,7 +411,7 @@ void main() {
   {
     id: "engraving",
     name: "Engraving",
-    category: "Draw",
+    category: "Print",
     description: "Banknote line engraving: parallel lines swell with darkness and bend with the form.",
     keywords: "intaglio currency lines etching woodcut",
     preview: "sculpture:1",
@@ -441,7 +441,7 @@ void main() {
   {
     id: "dot-matrix",
     name: "Dot matrix",
-    category: "Draw",
+    category: "Print",
     description: "A regular grid of dots sized by brightness, square or hex, mono or full colour.",
     keywords: "dots grid halftone led pattern",
     preview: "fashion:3",
@@ -478,7 +478,7 @@ void main() {
   {
     id: "mosaic",
     name: "Mosaic",
-    category: "Draw",
+    category: "Print",
     description: "Voronoi tiles filled with the colour beneath, separated by grout.",
     keywords: "voronoi tiles stained glass cells",
     preview: "architecture:1",
@@ -507,7 +507,7 @@ void main() {
   {
     id: "pixelate",
     name: "Pixelate",
-    category: "Draw",
+    category: "Print",
     description: "Large pixels in square, hexagon, triangle or circle cells, with optional gaps.",
     keywords: "pixel mosaic blocks censor 8-bit",
     preview: "car:2",
@@ -542,7 +542,7 @@ void main() {
   {
     id: "wave-lines",
     name: "Wave lines",
-    category: "Draw",
+    category: "Print",
     description: "Horizontal lines displaced by brightness — a ridge-plot of the image.",
     keywords: "ridge lines joy plot oscilloscope lines",
     preview: "face:4",

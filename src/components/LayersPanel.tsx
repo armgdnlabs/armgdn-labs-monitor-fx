@@ -7,7 +7,7 @@ import { profileUrl, UNSPLASH_URL, getPhoto } from "../data/photos";
 import { Icon } from "./ui/Icon";
 
 const TAGS: Record<string, string> = {
-  Adjust: "ADJ", Color: "COL", Film: "FILM", Retro: "RTR", Glitch: "GLT", Print: "PRNT", Draw: "DRAW", Blur: "BLUR", Distort: "DIST", Overlay: "OVR",
+  Adjust: "ADJ", Color: "COL", Film: "FILM", Retro: "RTR", Glitch: "GLT", Print: "PRNT", Blur: "BLUR", Distort: "DIST", Overlay: "OVR",
 };
 
 export function LayersPanel() {

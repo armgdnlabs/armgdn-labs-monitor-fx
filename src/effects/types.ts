@@ -1,5 +1,5 @@
 export const CATEGORIES = [
-  "Adjust", "Color", "Film", "Retro", "Glitch", "Print", "Draw", "Blur", "Distort", "Overlay",
+  "Adjust", "Color", "Film", "Retro", "Glitch", "Print", "Blur", "Distort", "Overlay",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 

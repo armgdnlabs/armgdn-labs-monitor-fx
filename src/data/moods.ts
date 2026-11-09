@@ -13,7 +13,6 @@ const CATEGORY_MOODS: Record<Category, string[]> = {
   Retro: ["portraits", "nightlife", "editorial"],
   Glitch: ["nightlife", "experimental", "editorial"],
   Print: ["botanic", "editorial", "portraits"],
-  Draw: ["portraits", "botanic", "nature"],
   Blur: ["nightlife", "streets", "editorial"],
   Distort: ["botanic", "experimental", "interior"],
   Overlay: ["portraits", "editorial", "film"],

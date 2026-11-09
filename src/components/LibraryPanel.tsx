@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { EFFECTS, getEffect, searchEffects } from "../effects/registry";
+import { LIBRARY, getEffect, searchEffects } from "../effects/registry";
 import { BUILTIN_PRESETS, PRESET_SECTIONS, type BuiltinPreset, type PresetSnapshot } from "../effects/presets";
 import { CATEGORIES, defaultValues, effectAnimates, type EffectDef } from "../effects/types";
 import { originalUrl, useThumbStrip, useThumbnail } from "../engine/thumbnails";
@@ -230,7 +230,7 @@ export function LibraryContent({ tab, query, filter, cols }: { tab: LibraryTab; 
     return (
       <>
         {cats.map((c) => {
-          const list = EFFECTS.filter((e) => e.category === c);
+          const list = LIBRARY.filter((e) => e.category === c);
           return <Section key={c} title={c} count={list.length}><Grid cols={cols}>{list.map((e) => <EffectCard key={e.id} e={e} />)}</Grid></Section>;
         })}
       </>
@@ -254,7 +254,7 @@ export function LibraryContent({ tab, query, filter, cols }: { tab: LibraryTab; 
   }
 
   if (tab === "favorites") {
-    const fx = EFFECTS.filter((e) => favs.includes(e.id) && (!q || e.name.toLowerCase().includes(q)));
+    const fx = LIBRARY.filter((e) => favs.includes(e.id) && (!q || e.name.toLowerCase().includes(q)));
     const pr = BUILTIN_PRESETS.filter((p) => favs.includes(`preset:${p.id}`) && (!q || p.name.toLowerCase().includes(q)));
     if (!fx.length && !pr.length) return <Empty line="NO FAVOURITES YET" hint="Hover any card and press the heart in its corner." />;
     return (

@@ -25,9 +25,18 @@ export const EFFECTS: EffectDef[] = [
   ...pointFx,
 ];
 
+/**
+ * The library shows the same 75 single effects as effect.app. Everything else that exists
+ * in code (drawing styles, cyanotype, receipt…) is reachable only through old share links;
+ * those looks are presets built from these 75.
+ */
+export const LIBRARY_IDS = ["curves","levels","exposure","contrast","hue-saturation","hue-curves","color-balance","color-temperature","rgb-gain","color-matrix","color-grading","gradient-map","thermal","threshold","monochrome","duotone","instant-film","infrared-film","classic-film","halation","film-grain","bw-film","vintage-film","star-glow","bloom","vignette","micro-8bit","paint-1bit","vhs","ascii","dither","crt","ntsc","led-screen","pixel-sort","grid-split","jpeg-glitch","frame-drop","modulation","glitch","rgb-shift","stripe","bevel","paper-cutout","risograph","ink-bleed","halftone","paper-scan","emboss","camera-shake","motion-trails","texture-blur","depth-of-field","circular-blur","motion-blur","radial-blur","zoom-blur","blur-sharp","gaussian-blur","scatter","displacement","reeded-glass","elastic-grid","cubify","ripple","transform","polar-to-rect","pinch","perspective","swirl","rect-to-polar","text","blob-tracker","paper-texture","noise"];
+const CORE_SET = new Set(LIBRARY_IDS);
 EFFECTS.sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
 
 const byId = new Map(EFFECTS.map((e) => [e.id, e]));
+/** Effects listed in the library (see LIBRARY_IDS). */
+export const LIBRARY: EffectDef[] = EFFECTS.filter((e) => CORE_SET.has(e.id));
 
 /** Ids from earlier versions, so old share links and saved presets keep working. */
 const ALIASES: Record<string, string> = {
@@ -64,7 +73,7 @@ export function effectsIn(category: Category | "All"): EffectDef[] {
   return category === "All" ? EFFECTS : EFFECTS.filter((e) => e.category === category);
 }
 
-export function searchEffects(query: string, list: EffectDef[] = EFFECTS): EffectDef[] {
+export function searchEffects(query: string, list: EffectDef[] = LIBRARY): EffectDef[] {
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (!terms.length) return list;
   return list.filter((e) => {

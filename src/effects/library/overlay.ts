@@ -78,7 +78,7 @@ void main() {
   },
   {
     id: "paper-texture",
-    name: "Texture",
+    name: "Layer mix",
     category: "Overlay",
     description: "Real photographed surfaces (Unsplash) laid over the image: crumpled, folded, lined, thin and tracing paper, cardboard, paper towel, cracked paint, broken glass, dust and linen. The texture is neutralised so it adds relief and grain without shifting exposure.",
     keywords: "paper crumpled folded tracing overlay texture surface cracks glass canvas towel linen dust",
