@@ -22,7 +22,7 @@ interface SliderProps {
 }
 
 /**
- * Thin track with a square thumb; the value is always shown.
+ * Pill track with a red fill and a round thumb; the value is always shown.
  * Drag, wheel and arrow keys all work; Shift gives fine control; double-click resets.
  */
 export function Slider({ label, value, min, max, step, def, unit, onChange, onStart, extra }: SliderProps) {
@@ -82,19 +82,19 @@ export function Slider({ label, value, min, max, step, def, unit, onChange, onSt
   return (
     <div className="group select-none" data-slider>
       <div className="flex items-center gap-2 h-5">
-        <span className="caps text-[10px] text-fg-2 truncate flex-1" onDoubleClick={() => def !== undefined && (onStart?.(), onChange(def))} title="Double-click to reset">{label}</span>
+        <span className="text-[12px] font-medium text-fg-2 group-hover:text-fg truncate flex-1" onDoubleClick={() => def !== undefined && (onStart?.(), onChange(def))} title="Double-click to reset">{label}</span>
         {extra}
         {editing ? (
           <input
             autoFocus
-            className="w-16 h-5 bg-transparent border border-fg text-right text-[11px] px-1 outline-none"
+            className="field w-16 h-6 text-right tabular-nums px-1.5"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commitDraft}
             onKeyDown={(e) => { if (e.key === "Enter") commitDraft(); if (e.key === "Escape") setEditing(false); }}
           />
         ) : (
-          <button className="text-[11px] text-fg tabular-nums hover:underline" onClick={() => { setDraft(String(value)); setEditing(true); }}>
+          <button className="text-fg tabular-nums px-1.5 h-5 rounded-md hover:bg-fg/10" onClick={() => { setDraft(String(value)); setEditing(true); }}>
             {formatValue(value, step, unit)}
           </button>
         )}
@@ -107,7 +107,7 @@ export function Slider({ label, value, min, max, step, def, unit, onChange, onSt
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}
-        className="relative h-4 cursor-ew-resize touch-none"
+        className="relative h-5 cursor-ew-resize touch-none"
         onPointerDown={onPointerDown}
         onDoubleClick={() => def !== undefined && (onStart?.(), onChange(def))}
         onKeyDown={(e) => {
@@ -115,16 +115,16 @@ export function Slider({ label, value, min, max, step, def, unit, onChange, onSt
           if (e.key === "ArrowLeft" || e.key === "ArrowDown") { e.preventDefault(); nudge(-1, e.shiftKey); }
         }}
       >
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-line" />
-        {min < 0 && max > 0 && <div className="absolute top-1/2 -translate-y-1/2 w-px h-2 bg-fg-muted" style={{ left: `${(-min / (max - min)) * 100}%` }} />}
-        <div className="absolute top-1/2 h-px bg-fg" style={{ left: min < 0 && max > 0 ? `${Math.min(t, -min / (max - min)) * 100}%` : 0, width: `${Math.abs(t - (min < 0 && max > 0 ? -min / (max - min) : 0)) * 100}%` }} />
-        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 bg-fg group-hover:w-2.5 group-hover:h-2.5" style={{ left: `${t * 100}%` }} />
+        <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1.5 rounded-full well" />
+        {min < 0 && max > 0 && <div className="absolute top-1/2 -translate-y-1/2 w-px h-3 bg-fg/30" style={{ left: `${(-min / (max - min)) * 100}%` }} />}
+        <div className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-signal" style={{ left: min < 0 && max > 0 ? `${Math.min(t, -min / (max - min)) * 100}%` : 0, width: `${Math.abs(t - (min < 0 && max > 0 ? -min / (max - min) : 0)) * 100}%` }} />
+        <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-fg shadow-[0_1px_4px_rgb(0_0_0/0.4)] transition-transform group-hover:scale-110" style={{ left: `${t * 100}%` }} />
       </div>
     </div>
   );
 }
 
-/** Rotary knob for the 2–3 hero params of an effect (DESIGN.md, UI kit 16:57). */
+/** Rotary knob for the 2–3 hero params of an effect: red value arc on a recessed track. */
 export function Knob({ label, value, min, max, step, def, unit, onChange, onStart }: SliderProps) {
   const t = (clamp(value, min, max) - min) / (max - min || 1);
   const a = -135 + t * 270;
@@ -150,7 +150,7 @@ export function Knob({ label, value, min, max, step, def, unit, onChange, onStar
         tabIndex={0}
         aria-label={label}
         aria-valuenow={value}
-        className="relative w-11 h-11 cursor-ns-resize touch-none"
+        className="relative w-14 h-14 cursor-ns-resize touch-none rounded-full transition-transform hover:scale-105"
         onPointerDown={onPointerDown}
         onDoubleClick={() => def !== undefined && (onStart?.(), onChange(def))}
         onWheel={(e) => { onStart?.(); onChange(clamp(snap(value + (e.deltaY < 0 ? 1 : -1) * (e.shiftKey ? step : Math.max(step, (max - min) / 100)), step, min), min, max)); }}
@@ -161,13 +161,14 @@ export function Knob({ label, value, min, max, step, def, unit, onChange, onStar
         }}
       >
         <svg viewBox="0 0 44 44" className="w-full h-full">
-          <circle cx="22" cy="22" r="17" fill="none" stroke="rgb(var(--border))" strokeWidth="1" />
-          <path d={arc(22, 22, 20, -135, a)} fill="none" stroke="rgb(var(--fg))" strokeWidth="1.5" />
-          <line x1="22" y1="22" x2={22 + 13 * Math.sin((a * Math.PI) / 180)} y2={22 - 13 * Math.cos((a * Math.PI) / 180)} stroke="rgb(var(--signal))" strokeWidth="2" />
+          <path d={arc(22, 22, 19, -135, 135)} fill="none" stroke="rgb(var(--fg) / 0.12)" strokeWidth="3" strokeLinecap="round" />
+          {t > 0.002 && <path d={arc(22, 22, 19, -135, a)} fill="none" stroke="rgb(var(--signal))" strokeWidth="3" strokeLinecap="round" />}
+          <circle cx="22" cy="22" r="13" fill="rgb(var(--fg) / 0.06)" stroke="rgb(var(--fg) / 0.12)" strokeWidth="1" />
+          <circle cx={22 + 9 * Math.sin((a * Math.PI) / 180)} cy={22 - 9 * Math.cos((a * Math.PI) / 180)} r="2" fill="rgb(var(--fg))" />
         </svg>
       </div>
-      <span className="text-[11px] tabular-nums">{formatValue(value, step, unit)}</span>
-      <span className="caps text-[9px] text-fg-muted truncate max-w-full">{label}</span>
+      <span className="text-fg tabular-nums">{formatValue(value, step, unit)}</span>
+      <span className="text-[11px] font-medium text-fg-muted truncate max-w-full">{label}</span>
     </div>
   );
 }

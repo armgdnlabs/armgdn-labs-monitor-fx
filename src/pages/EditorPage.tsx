@@ -59,8 +59,8 @@ export function EditorPage() {
     const preset = params.get("preset");
     if (share) {
       const snap = decodeShare(share);
-      if (snap) { ed.applySnapshot(snap); useUI.getState().toast("> LOADED SHARED STACK"); }
-      else useUI.getState().toast("> THAT SHARE LINK IS INVALID", "error");
+      if (snap) { ed.applySnapshot(snap); useUI.getState().toast("Loaded shared stack"); }
+      else useUI.getState().toast("That share link is invalid", "error");
     } else if (preset && presetById.get(preset)) {
       const pr = presetById.get(preset)!;
       ed.applySnapshot(pr.snapshot, "group", pr.name);

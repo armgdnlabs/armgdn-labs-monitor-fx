@@ -2,38 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Tokens (DESIGN.md §4). Channels are space-separated so Tailwind can apply alpha. ── */
+/* ── Tokens: the ARMGDN palette, dark by default, light on toggle. Channels are space-separated for Tailwind alpha. ── */
 :root {
   --void: 8 8 8; --ink: 30 30 30; --ash-900: 38 37 35; --ash-700: 74 72 69;
   --ash-500: 133 130 125; --ash-300: 189 185 178; --bone-200: 237 231 223; --bone: 247 242 236;
   --signal: 211 32 42;
 
-  --bg: var(--void); --bg-raised: var(--ash-900); --fg: var(--bone);
-  --fg-2: var(--ash-300); --fg-muted: var(--ash-500); --border: var(--ash-700);
+  --bg: var(--void); --bg-raised: 22 22 21; --fg: var(--bone);
+  --fg-2: 176 172 165; --fg-muted: 118 115 110; --border: 52 51 48;
   --panel: 14 14 13;
-  --glass: 247 242 236; --glass-a: 0.035; --edge-a: 0.09;
+  --glass: 247 242 236; --glass-a: 0.035; --edge-a: 0.085;
+  --well: 0 0 0; --well-a: 0.35;
   color-scheme: dark;
 }
 [data-theme="light"] {
-  --bg: var(--bone); --bg-raised: var(--bone-200); --fg: var(--void);
-  --fg-2: var(--ash-700); --fg-muted: var(--ash-500); --border: var(--ash-300);
-  --panel: 242 237 230;
-  --glass: 10 10 10; --glass-a: 0.03; --edge-a: 0.1;
+  --bg: 240 235 227; --bg-raised: 232 226 217; --fg: 12 12 12;
+  --fg-2: 70 68 64; --fg-muted: 128 124 118; --border: 205 199 190;
+  --panel: 250 247 242;
+  --glass: 255 255 255; --glass-a: 0.55; --edge-a: 0.9;
+  --well: 12 12 12; --well-a: 0.05;
   color-scheme: light;
 }
-/* Screen palette for the canvas frame and readouts follows the theme: dark = mono, light = analog. */
-:root, [data-screen="mono"] { --scr-bg: #0A0A0A; --scr-ink: #F7F2EC; --scr-mid: #85827D; --scr-dim: #4A4845; }
-[data-screen="analog"]      { --scr-bg: #E9E1D3; --scr-ink: #1E1B17; --scr-mid: #5E574C; --scr-dim: #9C9385; }
+/* The artboard surround follows the theme. */
+:root, [data-screen="mono"] { --scr-bg: #050505; --scr-ink: #F7F2EC; --scr-mid: #85827D; --scr-dim: #4A4845; }
+[data-screen="analog"]      { --scr-bg: #E4DED4; --scr-ink: #1E1B17; --scr-mid: #5E574C; --scr-dim: #9C9385; }
 
 @layer base {
   html, body, #root { height: 100%; }
   body {
-    @apply bg-bg text-fg font-mono antialiased;
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
+    @apply bg-bg text-fg font-grot antialiased;
+    font-size: 13px;
+    letter-spacing: -0.005em;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
-    background-image: radial-gradient(60% 50% at 12% 0%, rgb(var(--signal) / 0.07), transparent 70%), radial-gradient(50% 50% at 100% 100%, rgb(var(--fg) / 0.03), transparent 70%);
+    background-image: radial-gradient(55% 45% at 10% 0%, rgb(var(--signal) / 0.08), transparent 70%), radial-gradient(50% 50% at 100% 100%, rgb(var(--fg) / 0.03), transparent 70%);
   }
   /* Analog grain over everything, as on the ARMGDN site. */
   body::after {
@@ -41,38 +43,42 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     animation: grain 0.6s steps(6) infinite;
   }
-  [data-theme="light"] body::after { opacity: 0.05; mix-blend-mode: multiply; }
+  [data-theme="light"] body::after { opacity: 0.045; mix-blend-mode: multiply; }
   @keyframes grain { 0% { transform: translate(0, 0); } 20% { transform: translate(-4%, 3%); } 40% { transform: translate(3%, -5%); } 60% { transform: translate(-6%, -2%); } 80% { transform: translate(5%, 4%); } 100% { transform: translate(0, 0); } }
   @media (prefers-reduced-motion: reduce) { body::after { animation: none; } }
-  ::selection { background: rgb(var(--signal) / 0.5); color: rgb(var(--bone)); }
-  * { scrollbar-width: thin; scrollbar-color: rgb(var(--border)) transparent; }
+  ::selection { background: rgb(var(--signal)); color: rgb(var(--bone)); }
+  * { scrollbar-width: thin; scrollbar-color: rgb(var(--fg) / 0.18) transparent; }
   *::-webkit-scrollbar { width: 6px; height: 6px; }
-  *::-webkit-scrollbar-thumb { background: rgb(var(--border)); }
+  *::-webkit-scrollbar-thumb { background: rgb(var(--fg) / 0.18); border-radius: 6px; }
   button { -webkit-user-select: none; user-select: none; }
-  :focus-visible { outline: 1px solid rgb(var(--fg)); outline-offset: 1px; }
+  :focus-visible { outline: 2px solid rgb(var(--signal)); outline-offset: 2px; border-radius: 6px; }
   input, textarea, select { font: inherit; }
+  /* Numbers stay monospaced so values don't jitter while dragging. */
+  .tabular-nums { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.92em; letter-spacing: 0; }
 }
 
 @layer components {
-  /* Hairline boxes, not cards: no radius, no shadow, no blur. */
   .panel { @apply rounded-xl; background: rgb(var(--glass) / var(--glass-a)); box-shadow: inset 0 0 0 1px rgb(var(--glass) / var(--edge-a)); backdrop-filter: blur(20px); }
   /* Floating editor panels, like the site's glass cards. */
-  .glass-panel { @apply rounded-2xl overflow-hidden; background: rgb(var(--glass) / var(--glass-a)); box-shadow: inset 0 0 0 1px rgb(var(--glass) / var(--edge-a)), inset 0 1px 0 rgb(var(--glass) / 0.06); backdrop-filter: blur(24px); }
-  .hair-b { @apply border-b border-line; }
-  .hair-t { @apply border-t border-line; }
+  .glass-panel { @apply rounded-2xl overflow-hidden; background: rgb(var(--glass) / var(--glass-a)); box-shadow: inset 0 0 0 1px rgb(var(--glass) / var(--edge-a)), 0 18px 40px -28px rgb(0 0 0 / 0.5); backdrop-filter: blur(24px); }
+  [data-theme="light"] .glass-panel { box-shadow: inset 0 0 0 1px rgb(var(--border)), 0 18px 40px -30px rgb(0 0 0 / 0.25); }
+  .hair-b { border-bottom: 1px solid rgb(var(--fg) / 0.07); }
+  .hair-t { border-top: 1px solid rgb(var(--fg) / 0.07); }
+  /* Recessed area inside a panel (inputs, tracks, readouts). */
+  .well { background: rgb(var(--well) / var(--well-a)); box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.07); }
 
-  /* "// NAME" panel headers. */
-  .ph { @apply flex items-center gap-2 h-8 px-3 shrink-0 text-[11px] uppercase tracking-[0.08em] text-fg select-none; }
-  .slash::before { content: "// "; color: rgb(var(--fg-muted)); }
-  .caps { @apply uppercase tracking-[0.06em]; }
+  /* Panel headers: a red dot and a grotesk title. */
+  .ph { @apply flex items-center gap-2 h-11 px-3.5 shrink-0 text-[14px] font-semibold text-fg select-none; letter-spacing: -0.02em; }
+  .slash::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: rgb(var(--signal)); vertical-align: 1px; }
+  .caps { font-weight: 500; }
   .muted { @apply text-fg-muted; }
+  .kick { @apply text-[11px] font-medium text-fg-muted; }
 
-  /* Buttons: rectangles, mono uppercase, hover inverts, 1px press nudge, ≤80ms. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 h-8 px-3.5 rounded-full font-grot font-semibold text-[12px]
+    @apply inline-flex items-center justify-center gap-2 h-8 px-3.5 rounded-full font-grot font-semibold text-[12.5px]
       text-fg disabled:opacity-35 disabled:pointer-events-none;
-    background: rgb(var(--glass) / 0.05); box-shadow: inset 0 0 0 1px rgb(var(--glass) / 0.14);
-    transition: background 0.2s, color 0.2s;
+    background: rgb(var(--fg) / 0.06); box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.1);
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   }
   .btn:hover { @apply bg-fg text-bg; box-shadow: none; }
   .btn:active { transform: translateY(1px); }
@@ -81,46 +87,53 @@
   .btn-signal { @apply btn bg-signal text-bone; box-shadow: none; }
   .btn-signal:hover { @apply bg-fg text-bg; }
   .icon-btn {
-    @apply inline-flex items-center justify-center w-8 h-8 rounded-full text-fg-2 transition-colors duration-80 ease-linear
-      hover:bg-fg hover:text-bg disabled:opacity-30 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-full text-fg-2 disabled:opacity-30 disabled:pointer-events-none;
+    transition: background 0.15s, color 0.15s;
   }
+  .icon-btn:hover { background: rgb(var(--fg) / 0.08); color: rgb(var(--fg)); }
   .icon-btn:active { transform: translateY(1px); }
   .icon-btn.on { @apply bg-fg text-bg; }
 
-  .tab { @apply h-7 px-3 rounded-full font-grot font-semibold text-[12px] text-fg-muted hover:text-fg whitespace-nowrap transition-colors; }
+  .tab { @apply h-7 px-3 rounded-full font-semibold text-[12.5px] text-fg-muted hover:text-fg whitespace-nowrap; transition: background 0.15s, color 0.15s; }
   .tab.on { @apply bg-fg text-bg; }
+  /* Segmented control: a pill holding tabs or icon buttons. */
+  .seg { @apply inline-flex items-center gap-0.5 p-0.5 rounded-full; background: rgb(var(--fg) / 0.05); box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.07); }
 
   .field {
-    @apply w-full h-8 rounded-lg px-2.5 text-[12px] text-fg placeholder:text-fg-muted outline-none;
-    background: rgb(var(--glass) / 0.05); box-shadow: inset 0 0 0 1px rgb(var(--glass) / 0.12);
+    @apply w-full h-8 rounded-lg px-2.5 text-[12.5px] text-fg placeholder:text-fg-muted outline-none;
+    background: rgb(var(--well) / var(--well-a)); box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.1);
+    transition: box-shadow 0.15s;
   }
-  .menu { @apply min-w-[200px] z-50 p-1 rounded-xl; background: rgb(var(--bg) / 0.86); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgb(var(--glass) / 0.12), 0 24px 50px -20px rgb(0 0 0 / 0.7); }
-  .menu-item { @apply w-full flex items-center gap-2 px-3 h-8 rounded-lg font-grot font-medium text-[12.5px] text-fg-2 hover:bg-fg hover:text-bg text-left; }
-  .kbd { @apply text-fg-muted; }
-  .kbd::before { content: "["; } .kbd::after { content: "]"; }
+  .field:focus { box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.5); }
+  .menu { @apply min-w-[200px] z-50 p-1 rounded-xl; background: rgb(var(--panel) / 0.92); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.1), 0 24px 50px -20px rgb(0 0 0 / 0.55); }
+  .menu-item { @apply w-full flex items-center gap-2 px-3 h-8 rounded-lg font-medium text-[12.5px] text-fg-2 text-left; transition: background 0.12s, color 0.12s; }
+  .menu-item:hover { @apply bg-fg text-bg; }
+  .kbd { @apply inline-flex items-center h-[18px] px-1.5 rounded-md text-[10px] text-fg-muted; font-family: "JetBrains Mono", monospace; background: rgb(var(--fg) / 0.06); }
 
-  /* Tags `// LABS` set (Slash, Chip, Solid, Terminal, Pixel). */
-  .tag { @apply inline-flex items-center h-4 px-1 text-[9px] uppercase tracking-[0.08em] font-pixel leading-none whitespace-nowrap; }
-  .tag-chip { @apply tag border border-line text-fg-2; }
+  /* Tags: small pills. */
+  .tag { @apply inline-flex items-center h-[18px] px-2 rounded-full text-[10px] font-semibold leading-none whitespace-nowrap; letter-spacing: 0; }
+  .tag-chip { @apply tag text-fg-2; box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.14); }
   .tag-solid { @apply tag bg-fg text-bg; }
   .tag-signal { @apply tag bg-signal text-bone; }
 
-  /* The MONITOR wordmark: CRT pixel display face with its scanline axis dialled in. */
-  .wordmark { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 600; letter-spacing: -0.05em; color: rgb(var(--fg)); }
+  /* The wordmark, as on the site: grotesk with a red parenthetical. */
+  .wordmark { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 600; letter-spacing: -0.055em; color: rgb(var(--fg)); }
   .wordmark sup { font-weight: 500; font-size: 0.42em; letter-spacing: 0; color: rgb(var(--signal)); margin-left: 0.15em; }
   /* Overlay buttons on library cards. */
   .card-btn {
-    @apply absolute w-8 h-8 inline-flex items-center justify-center text-bone opacity-0 transition-opacity duration-80
+    @apply absolute w-8 h-8 rounded-full inline-flex items-center justify-center text-bone opacity-0 transition-opacity duration-80
       group-hover:opacity-100 focus-visible:opacity-100;
-    background: rgb(10 10 10 / 0.72);
+    background: rgb(10 10 10 / 0.55); backdrop-filter: blur(10px);
   }
   .card-btn:hover { @apply bg-bone text-void; }
   .card-btn.on { @apply opacity-100 text-signal; }
-  .chip {
-    @apply h-6 px-2.5 rounded-full border border-line font-grot font-semibold text-[11px] text-fg-2 whitespace-nowrap hover:text-fg hover:border-fg;
-  }
-  .chip.on { @apply bg-fg text-bg border-fg; }
-  .screen-readout { @apply font-screen text-[18px] leading-none; color: var(--scr-ink); }
+  .chip { @apply h-7 px-3 rounded-full font-semibold text-[12px] text-fg-2 whitespace-nowrap hover:text-fg; background: rgb(var(--fg) / 0.05); transition: background 0.15s, color 0.15s; }
+  .chip.on { @apply bg-fg text-bg; }
+  .screen-readout { @apply inline-flex items-center h-7 px-2.5 rounded-full text-[11.5px]; font-family: "JetBrains Mono", monospace; color: rgb(var(--fg)); background: rgb(var(--well) / var(--well-a)); box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.07); }
+  /* Theme switch, same as the ARMGDN site. */
+  .theme-toggle { position: relative; width: 44px; height: 24px; border-radius: 999px; flex: none; background: rgb(var(--fg) / 0.06); box-shadow: inset 0 0 0 1px rgb(var(--fg) / 0.14); }
+  .theme-toggle__knob { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: rgb(var(--fg)); box-shadow: inset -5px -3px 0 0 rgb(var(--bg)); transition: transform 0.45s cubic-bezier(0.2, 0.9, 0.25, 1); }
+  [data-theme="light"] .theme-toggle__knob { transform: translateX(20px); background: rgb(var(--bone)); box-shadow: inset 0 0 0 3px rgb(var(--signal)); }
 }
 
 @layer utilities {
@@ -129,7 +142,7 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   /* Corner registration ticks for the screen frame. */
   .ticks { position: relative; }
-  .ticks > .tick { position: absolute; width: 10px; height: 10px; border-color: rgb(var(--fg-muted)); pointer-events: none; }
+  .ticks > .tick { position: absolute; width: 12px; height: 12px; border-color: rgb(var(--signal) / 0.8); pointer-events: none; }
   .tick.tl { top: -1px; left: -1px; border-top-width: 1px; border-left-width: 1px; }
   .tick.tr { top: -1px; right: -1px; border-top-width: 1px; border-right-width: 1px; }
   .tick.bl { bottom: -1px; left: -1px; border-bottom-width: 1px; border-left-width: 1px; }

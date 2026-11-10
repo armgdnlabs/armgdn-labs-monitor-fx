@@ -14,9 +14,9 @@ export async function loadPhotoSource(photo: Photo) {
   try {
     const media = await loadPhoto(photo);
     useEditor.getState().setMedia(media);
-    toast(`> SOURCE // PHOTO BY ${photo.name.toUpperCase()} ON UNSPLASH`);
+    toast(`Photo by ${photo.name} on Unsplash`);
   } catch {
-    toast("> SOURCE FAILED — network blocked? Loading test card.", "error");
+    toast("Couldn't load the photo (network blocked?). Loading a test card.", "error");
     useEditor.getState().setMedia(await createTestCard());
   } finally {
     busy = false;
@@ -32,9 +32,9 @@ export async function sourceFromFile(file: File) {
   try {
     const media = await loadMediaFile(file);
     useEditor.getState().setMedia(media);
-    toast(`> LOADED ${file.name.toUpperCase()} (${media.width}×${media.height})`, "success");
+    toast(`Loaded ${file.name}, ${media.width}×${media.height}`, "success");
   } catch (e) {
-    toast(`> ${(e as Error).message}`, "error");
+    toast((e as Error).message, "error");
   }
 }
 
@@ -42,10 +42,10 @@ export async function sourceFromUrl(url: string) {
   try {
     const media = await loadMediaUrl(url.trim());
     useEditor.getState().setMedia(media);
-    toast(`> LOADED URL (${media.width}×${media.height})`, "success");
+    toast(`Loaded image, ${media.width}×${media.height}`, "success");
     return true;
   } catch (e) {
-    toast(`> ${(e as Error).message}`, "error");
+    toast((e as Error).message, "error");
     return false;
   }
 }

@@ -72,7 +72,7 @@ function ExportModal({ onClose }: { onClose: () => void }) {
           <Seg value={ed.exportSize} onChange={(v) => ed.set({ exportSize: v })} options={EXPORT_SIZES.map((s) => ({ v: s.id, label: s.label, disabled: isVideo && (s.id === "8k" || s.id === "16k") }))} />
         </Field>
         <Field label="Crop">
-          <select className="field h-7 caps text-[11px]" style={{ background: "rgb(var(--bg))" }} value={ed.aspect} onChange={(e) => ed.set({ aspect: e.target.value as typeof ed.aspect })}>
+          <select className="field h-8 font-medium" value={ed.aspect} onChange={(e) => ed.set({ aspect: e.target.value as typeof ed.aspect })}>
             {ASPECTS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
           </select>
         </Field>
@@ -84,7 +84,7 @@ function ExportModal({ onClose }: { onClose: () => void }) {
         {isVideo && media?.kind === "image" && (
           <Field label="Duration (seconds)">
             <input type="number" className="field" min={1} max={600} value={ed.duration} onChange={(e) => ed.set({ duration: Math.max(1, Math.min(600, Number(e.target.value) || 5)) })} />
-            {!stackIsAnimated(ed.layers) && <span className="text-[10px] text-fg-muted">&gt; Nothing in the stack moves yet. Add an animated effect or keyframes.</span>}
+            {!stackIsAnimated(ed.layers) && <span className="text-[11.5px] text-fg-muted">Nothing in the stack moves yet. Add an animated effect or keyframes.</span>}
           </Field>
         )}
         <div className="panel px-2 py-1.5 text-[11px] flex items-center justify-between" style={{ background: "var(--scr-bg)", color: "var(--scr-ink)" }}>
@@ -99,7 +99,7 @@ function ExportModal({ onClose }: { onClose: () => void }) {
         ) : (
           <button className="btn-primary h-9" disabled={!media} onClick={() => void run()}><Icon name="download" />Export {isVideo ? "video" : "image"}</button>
         )}
-        <p className="text-[10px] text-fg-muted">&gt; Free, no watermark, full resolution — limited only by your GPU.</p>
+        <p className="text-[11.5px] text-fg-muted">Free, no watermark, full resolution — limited only by your GPU.</p>
       </div>
     </Modal>
   );
@@ -123,7 +123,7 @@ function SourceUrlModal({ onClose }: { onClose: () => void }) {
         <Field label="Image or video URL">
           <input autoFocus className="field" placeholder="https://images.unsplash.com/photo-…" value={url} onChange={(e) => setUrl(e.target.value)} />
         </Field>
-        <p className="text-[10px] text-fg-muted">&gt; The host must allow cross-origin use (Unsplash, imgur, GitHub raw and most CDNs do). Otherwise download the file and drop it in.</p>
+        <p className="text-[11.5px] text-fg-muted">The host must allow cross-origin use (Unsplash, imgur, GitHub raw and most CDNs do). Otherwise download the file and drop it in.</p>
         <button className="btn-primary h-8" disabled={busy || !/^https?:\/\//i.test(url.trim())}>{busy ? "LOADING…" : "Load"}</button>
       </form>
     </Modal>
@@ -151,7 +151,7 @@ function SavePresetModal({ onClose }: { onClose: () => void }) {
       try { cover = t.toDataURL("image/jpeg", 0.8); } catch { /* tainted */ }
     }
     save(name.trim() || "Untitled", snapshot(), cover);
-    useUI.getState().toast(`> PRESET SAVED — ${name.toUpperCase()}`, "success");
+    useUI.getState().toast(`Preset saved: ${name}`, "success");
     usePrefs.getState().set({ libraryTab: "mine", libraryCollapsed: false });
     onClose();
   };
@@ -159,9 +159,9 @@ function SavePresetModal({ onClose }: { onClose: () => void }) {
     <Modal title="Save preset" onClose={onClose}>
       <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <Field label="Name"><input autoFocus className="field" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} /></Field>
-        <p className="text-[10px] text-fg-muted">&gt; {layers.length} layer{layers.length === 1 ? "" : "s"}. Saved in this browser under MY PRESETS; export JSON there to back up or share.</p>
+        <p className="text-[11.5px] text-fg-muted">{layers.length} layer{layers.length === 1 ? "" : "s"}. Saved in this browser under My presets; export JSON there to back up or share.</p>
         <div className="flex gap-2">
-          <button type="button" className="btn flex-1" onClick={async () => { await navigator.clipboard.writeText(shareUrl(snapshot())).catch(() => {}); useUI.getState().toast("> SHARE LINK COPIED", "success"); }}><Icon name="link" />Copy link</button>
+          <button type="button" className="btn flex-1" onClick={async () => { await navigator.clipboard.writeText(shareUrl(snapshot())).catch(() => {}); useUI.getState().toast("Share link copied", "success"); }}><Icon name="link" />Copy link</button>
           <button className="btn-primary flex-1"><Icon name="floppy" />Save</button>
         </div>
       </form>
@@ -181,10 +181,10 @@ function BatchModal({ onClose }: { onClose: () => void }) {
     try {
       const zip = await exportBatch(files, layers, { format, quality: 0.92, onProgress: (d) => setDone(d) });
       downloadBlob(zip, "monitor-batch.zip");
-      useUI.getState().toast(`> BATCH COMPLETE — ${files.length} files`, "success");
+      useUI.getState().toast(`Batch complete: ${files.length} files`, "success");
       onClose();
     } catch (e) {
-      useUI.getState().toast(`> BATCH FAILED — ${(e as Error).message}`, "error");
+      useUI.getState().toast(`Batch failed: ${(e as Error).message}`, "error");
       setDone(null);
     }
   };
@@ -225,9 +225,9 @@ function ProfileModal({ onClose }: { onClose: () => void }) {
         const r = await subscribeNewsletter(p.name, p.email);
         useUI.getState().toast(r === "sent" ? "> SUBSCRIBED — release notes incoming" : "> PROFILE SAVED LOCALLY", "success");
       } catch (e) {
-        useUI.getState().toast(`> SIGNUP FAILED — ${(e as Error).message}`, "error");
+        useUI.getState().toast(`Sign-up failed: ${(e as Error).message}`, "error");
       }
-    } else useUI.getState().toast("> PROFILE SAVED", "success");
+    } else useUI.getState().toast("Profile saved", "success");
     setBusy(false);
     onClose();
   };
@@ -248,7 +248,7 @@ function ProfileModal({ onClose }: { onClose: () => void }) {
           {profile && <button type="button" className="btn-signal" onClick={() => { signOut(); onClose(); }}>Sign out</button>}
           <button className="btn-primary flex-1" disabled={!valid || busy}>{profile ? "Update" : "Save profile"}</button>
         </div>
-        {profile && <p className="text-[10px] text-fg-muted">&gt; {profile.name} · {presets} saved preset{presets === 1 ? "" : "s"} · since {profile.joinedAt.slice(0, 10)}</p>}
+        {profile && <p className="text-[11.5px] text-fg-muted">{profile.name} · {presets} saved preset{presets === 1 ? "" : "s"} · since {profile.joinedAt.slice(0, 10)}</p>}
       </form>
     </Modal>
   );
@@ -273,12 +273,12 @@ function AboutModal({ onClose }: { onClose: () => void }) {
     <Modal title="About" onClose={onClose} width="max-w-lg">
       <div className="flex flex-col items-center text-center gap-3 py-3 grain-surface">
         <Symbol className="h-14" />
-        <p className="font-serif text-[26px] tracking-[0.42em] pl-[0.42em]">MONITOR</p>
-        <Wordmark className="h-3 opacity-80" />
-        <p className="text-[10px] caps text-fg-muted tracking-[0.2em]">FX by ARMGDN // LABS</p>
-        <p className="font-serif italic text-fg-2">The Chaos to Create.</p>
+        <p className="wordmark text-[56px] leading-none">Monitor.<sup>(fx)</sup></p>
+        <p className="text-[12px] text-fg-muted">by</p>
+        <Wordmark className="h-3.5 opacity-90" />
+        <p className="font-serif italic text-[18px] text-fg-2 mt-1">The Chaos to Create.</p>
       </div>
-      <div className="flex flex-col gap-2 text-[11px] text-fg-2 leading-relaxed hair-t pt-3">
+      <div className="flex flex-col gap-2 text-[13px] text-fg-2 leading-relaxed hair-t pt-4">
         <p>An open-source FX engine for images and video: load media, stack {LIBRARY.length} GPU effects as layers, start from {BUILTIN_PRESETS.length} presets, export at full resolution. Free, no watermark, no locked features.</p>
         <p>Everything runs on your GPU in the browser via WebGL 2. Your media never leaves your machine.</p>
         <p>Sample photography from <a className="underline" href={UNSPLASH_URL} target="_blank" rel="noreferrer">Unsplash</a>, credited on every use.</p>
@@ -287,7 +287,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
         <img src="./brand/human-made.png" alt="Human made — not generated" className="w-20 h-20 pixelated" />
         <div className="flex flex-col gap-2 flex-1">
           <a className="btn" href={REPO_URL} target="_blank" rel="noreferrer"><Icon name="github" />Source on GitHub</a>
-          <span className="text-[10px] text-fg-muted caps">MIT licence · v2.0</span>
+          <a className="btn" href="/">ARMGDN home</a><span className="text-[11.5px] text-fg-muted">MIT licence · v2.0</span>
         </div>
       </div>
     </Modal>
@@ -300,15 +300,15 @@ export function Toasts() {
   const toasts = useUI((s) => s.toasts);
   const dismiss = useUI((s) => s.dismiss);
   return (
-    <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[120] flex flex-col gap-1 items-center pointer-events-none w-[min(92vw,640px)]" aria-live="polite">
+    <div className="fixed top-16 left-1/2 -translate-x-1/2 z-[120] flex flex-col gap-1 items-center pointer-events-none w-[min(92vw,640px)]" aria-live="polite">
       {toasts.map((t) => (
         <button
           key={t.id}
           onClick={() => dismiss(t.id)}
-          className={`pointer-events-auto max-w-full text-left px-3 py-1.5 text-[11px] border ${t.tone === "error" ? "border-signal text-signal" : "border-line text-fg"}`}
-          style={{ background: "rgb(var(--bg))" }}
+          className={`pointer-events-auto max-w-full text-left flex items-center gap-2 pl-3 pr-4 h-9 rounded-full text-[12.5px] font-medium backdrop-blur-xl shadow-[0_16px_30px_-16px_rgb(0_0_0/0.6)] ${t.tone === "error" ? "bg-signal text-bone" : "text-fg"}`}
+          style={t.tone === "error" ? undefined : { background: "rgb(var(--panel) / 0.9)", boxShadow: "inset 0 0 0 1px rgb(var(--fg) / 0.1)" }}
         >
-          <span className="truncate block">{t.message.startsWith(">") ? t.message : `> ${t.message}`}</span>
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${t.tone === "error" ? "bg-bone" : t.tone === "success" ? "bg-signal" : "bg-fg"}`} /><span className="truncate block">{t.message.replace(/^>\s*/, "")}</span>
         </button>
       ))}
     </div>

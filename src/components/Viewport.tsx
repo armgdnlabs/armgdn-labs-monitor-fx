@@ -35,7 +35,7 @@ export function Viewport() {
   useEffect(() => {
     try {
       const r = new Renderer(canvasRef.current!);
-      r.onShaderError = (e) => useUI.getState().toast(`> SHADER ERROR — "${getEffect(e.effectId)?.name ?? e.effectId}" can't compile on this GPU; skipped`, "error");
+      r.onShaderError = (e) => useUI.getState().toast(`${getEffect(e.effectId)?.name ?? e.effectId} can't run on this GPU, so it was skipped`, "error");
       rendererRef.current = r;
       const dbg = r.gl.getExtension("WEBGL_debug_renderer_info");
       const gpu = dbg ? String(r.gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : "WebGL2";
@@ -227,7 +227,7 @@ export function Viewport() {
         setDragOver(false);
         const f = e.dataTransfer.files[0];
         if (f && /^(image|video)\//.test(f.type)) void sourceFromFile(f);
-        else useUI.getState().toast("> DROP AN IMAGE OR VIDEO FILE", "error");
+        else useUI.getState().toast("Drop an image or video file", "error");
       }}
     >
       {/* One canvas for the renderer's whole life; hidden until media arrives. */}
@@ -247,21 +247,21 @@ export function Viewport() {
       {!media && !glError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 grain-surface" style={{ color: "var(--scr-ink)" }}>
           <Symbol className="h-16" />
-          <p className="text-[12px] caps">Drop media or press <span className="kbd">O</span></p>
-          <p className="font-serif text-[13px] tracking-[0.4em] uppercase opacity-70">The Chaos to Create</p>
+          <p className="text-[13px] font-medium">Drop media or press <span className="kbd">O</span></p>
+          <p className="font-serif italic text-[22px] opacity-70">The Chaos to Create.</p>
         </div>
       )}
       {glError && (
         <div className="absolute inset-0 flex items-center justify-center p-8">
-          <div className="panel p-5 max-w-sm" style={{ background: "rgb(var(--bg))" }}>
+          <div className="glass-panel p-5 max-w-sm">
             <p className="ph slash px-0 text-signal">Rendering unavailable</p>
             <p className="text-[12px] text-fg-2">{glError} MONITOR needs WebGL 2 (Safari 15+, Chrome, Edge, Firefox, Arc).</p>
           </div>
         </div>
       )}
       {dragOver && (
-        <div className="pointer-events-none absolute inset-3 border border-dashed border-fg flex items-center justify-center bg-void/40">
-          <span className="caps text-bone">&gt; DROP TO LOAD MEDIA</span>
+        <div className="pointer-events-none absolute inset-3 rounded-2xl border-2 border-dashed border-signal flex items-center justify-center bg-void/50">
+          <span className="text-[15px] font-semibold text-bone">Drop to load media</span>
         </div>
       )}
       {media && <ArtboardBar />}
@@ -303,9 +303,9 @@ function Handles() {
             className="absolute w-5 h-5 -ml-2.5 -mt-2.5 cursor-move flex items-center justify-center"
             style={{ left: `${x * 100}%`, top: `${(1 - y) * 100}%` }}
           >
-            <span className="absolute inset-0 border border-bone mix-blend-difference" />
-            <span className="w-1 h-1 bg-signal" />
-            <span className="absolute left-6 top-0 text-[9px] caps whitespace-nowrap text-bone mix-blend-difference">{h.label}</span>
+            <span className="absolute inset-0 rounded-full border-2 border-bone mix-blend-difference" />
+            <span className="w-1.5 h-1.5 rounded-full bg-signal" />
+            <span className="absolute left-6 -top-0.5 tag-solid whitespace-nowrap">{h.label}</span>
           </div>
         );
       })}

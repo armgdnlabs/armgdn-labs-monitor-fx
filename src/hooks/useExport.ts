@@ -31,10 +31,10 @@ export function useExport() {
     if (!ed.media || useExportJob.getState().progress) return;
     try {
       if (ed.exportFormat === "video") {
-        if (!pickVideoMime()) { ui.toast("> THIS BROWSER CAN'T RECORD VIDEO — try Chrome, Edge, Firefox or Safari 14.1+", "error"); return; }
+        if (!pickVideoMime()) { ui.toast("This browser can't record video. Try Chrome, Edge, Firefox or Safari 14.1+", "error"); return; }
         const fromStill = ed.media.kind === "image";
         const seconds = fromStill ? ed.duration : ed.media.duration;
-        if (fromStill && !stackIsAnimated(ed.layers)) ui.toast("> NOTHING MOVES YET — add an animated effect or keyframes");
+        if (fromStill && !stackIsAnimated(ed.layers)) ui.toast("Nothing moves yet. Add an animated effect or keyframes");
         abort.current = new AbortController();
         setTick((n) => n + 1);
         setProgress({ label: "REC", fraction: 0 });
@@ -48,7 +48,7 @@ export function useExport() {
         });
         downloadBlob(res.blob, res.filename);
         ed.set({ playing: wasPlaying });
-        ui.toast(`> EXPORT COMPLETE — ${res.filename} (${mb(res.blob)})`, "success");
+        ui.toast(`Exported ${res.filename} (${mb(res.blob)})`, "success");
         trackEvent("export_video", { seconds, w: res.plan.width, h: res.plan.height });
       } else {
         setProgress({ label: "RENDER", fraction: 0.5 });
@@ -58,12 +58,12 @@ export function useExport() {
         });
         downloadBlob(res.blob, res.filename);
         const tail = res.plan.limitedByGpu ? " — capped at your GPU's max texture size" : "";
-        ui.toast(`> EXPORT COMPLETE — ${res.filename} ${res.plan.width}×${res.plan.height} (${mb(res.blob)})${tail}`, "success");
+        ui.toast(`Exported ${res.filename}, ${res.plan.width}×${res.plan.height} (${mb(res.blob)})${tail}`, "success");
         trackEvent("export_image", { w: res.plan.width, h: res.plan.height, format: ed.exportFormat });
       }
     } catch (e) {
-      if ((e as Error).name !== "AbortError") ui.toast(`> EXPORT FAILED — ${(e as Error).message}`, "error");
-      else ui.toast("> EXPORT CANCELLED");
+      if ((e as Error).name !== "AbortError") ui.toast(`Export failed: ${(e as Error).message}`, "error");
+      else ui.toast("Export cancelled");
     } finally {
       setProgress(null);
       abort.current = null;

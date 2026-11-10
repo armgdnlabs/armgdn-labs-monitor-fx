@@ -49,8 +49,8 @@ function useVisible<T extends Element>() {
 }
 
 const copy = async (text: string, what: string) => {
-  try { await navigator.clipboard.writeText(text); useUI.getState().toast(`> ${what} COPIED TO CLIPBOARD`, "success"); }
-  catch { useUI.getState().toast("> CLIPBOARD BLOCKED", "error"); }
+  try { await navigator.clipboard.writeText(text); useUI.getState().toast(`${what} copied to clipboard`, "success"); }
+  catch { useUI.getState().toast("Clipboard blocked by the browser", "error"); }
 };
 
 const effectPreset = (e: EffectDef): PresetSnapshot => ({ version: 1, graph: [{ id: e.id, values: defaultValues(e) }] });
@@ -92,7 +92,7 @@ function Card({ thumbKey, photo, layers, name, sub, moves, favorite, onFavorite,
   return (
     <div ref={ref} className="group min-w-0" title={title}>
       <div
-        className="relative w-full aspect-[4/5] overflow-hidden border border-line group-hover:border-fg cursor-pointer"
+        className="relative w-full aspect-[4/5] overflow-hidden rounded-xl cursor-pointer transition-[box-shadow,transform] duration-300 group-hover:-translate-y-0.5 group-hover:shadow-[0_0_0_1.5px_rgb(var(--fg)),0_14px_30px_-16px_rgb(0_0_0/0.6)]"
         style={{ background: "rgb(var(--bg-raised))" }}
         onPointerEnter={() => setHover(true)}
         onPointerLeave={() => { setHover(false); setTick(0); }}
@@ -102,30 +102,30 @@ function Card({ thumbKey, photo, layers, name, sub, moves, favorite, onFavorite,
         onKeyDown={(e) => { if (e.key === "Enter") onClick(e as unknown as React.MouseEvent); }}
       >
         {still ? <img src={frame ?? still} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} /> : (
-          <div className="absolute inset-0 flex items-center justify-center text-[10px] caps text-fg-muted">
-            {still === "" ? "NO SIGNAL" : <span className="blink">_</span>}
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] text-fg-muted well">
+            {still === "" ? "No signal" : <span className="blink">_</span>}
           </div>
         )}
         {showOriginal && still && (
           <>
             <img src={originalUrl(photo)} alt="" className="absolute inset-0 w-full h-full object-cover" draggable={false} />
-            <span className="absolute left-1.5 bottom-1.5 tag-solid">Original</span>
+            <span className="absolute left-2 bottom-2 tag-solid">Original</span>
           </>
         )}
-        {hover && moves && !strip && <span className="absolute left-1.5 bottom-1.5 tag-solid">Loading<span className="blink">_</span></span>}
+        {hover && moves && !strip && <span className="absolute left-2 bottom-2 tag-solid">Loading<span className="blink">_</span></span>}
         {onShare && (
-          <button className="card-btn left-1 top-1" title="Copy share link" onClick={(e) => { e.stopPropagation(); onShare(); }}><Icon name="link" /></button>
+          <button className="card-btn left-1.5 top-1.5" title="Copy share link" onClick={(e) => { e.stopPropagation(); onShare(); }}><Icon name="link" /></button>
         )}
         {onFavorite && (
-          <button className={`card-btn right-1 top-1 ${favorite ? "on" : ""}`} title={favorite ? "Remove from favourites" : "Add to favourites"} onClick={(e) => { e.stopPropagation(); onFavorite(); }}>
+          <button className={`card-btn right-1.5 top-1.5 ${favorite ? "on" : ""}`} title={favorite ? "Remove from favourites" : "Add to favourites"} onClick={(e) => { e.stopPropagation(); onFavorite(); }}>
             <Icon name="heart" />
           </button>
         )}
         {extra}
       </div>
-      <div className="pt-1.5 min-h-[30px] cursor-pointer" onClick={onClick}>
-        <p className="truncate text-[11px] caps text-fg-2 group-hover:text-fg leading-tight">{name}</p>
-        {sub && <p className="truncate text-[10px] text-fg-muted leading-tight mt-0.5">{sub}</p>}
+      <div className="pt-2 px-0.5 min-h-[34px] cursor-pointer" onClick={onClick}>
+        <p className="truncate text-[12.5px] font-semibold text-fg-2 group-hover:text-fg leading-tight tracking-[-0.01em]">{name}</p>
+        {sub && <p className="truncate text-[11px] text-fg-muted leading-tight mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -144,7 +144,7 @@ function EffectCard({ e }: { e: EffectDef }) {
       favorite={favs.includes(e.id)}
       onFavorite={() => toggle(e.id)}
       onShare={() => copy(shareUrl(effectPreset(e)), "LINK")}
-      onClick={() => { useEditor.getState().addLayer(e.id); useUI.getState().toast(`> FX.${e.id.toUpperCase()} ADDED`); }}
+      onClick={() => { useEditor.getState().addLayer(e.id); useUI.getState().toast(`${e.name} added`); }}
     />
   );
 }
@@ -165,7 +165,7 @@ function PresetCard({ p }: { p: BuiltinPreset }) {
       favorite={favs.includes(key)}
       onFavorite={() => toggle(key)}
       onShare={() => copy(shareUrl(p.snapshot), "LINK")}
-      onClick={() => { useEditor.getState().applySnapshot(p.snapshot, "group", p.name); useUI.getState().toast(`> PRESET // ${p.name.toUpperCase()} ADDED`); }}
+      onClick={() => { useEditor.getState().applySnapshot(p.snapshot, "group", p.name); useUI.getState().toast(`${p.name} added`); }}
     />
   );
 }
@@ -198,7 +198,7 @@ function MyPresetCard({ p }: { p: SavedPreset }) {
 function Section({ title, count, children }: { title: string; count?: number; children: ReactNode }) {
   return (
     <section className="mb-5">
-      <h3 className="slash text-[11px] caps text-fg mb-2 flex items-center gap-2">{title}{count !== undefined && <span className="text-fg-muted">{count}</span>}</h3>
+      <h3 className="slash text-[14px] font-semibold tracking-[-0.02em] text-fg mb-2.5 flex items-center gap-1">{title}{count !== undefined && <span className="tag-chip tabular-nums ml-1">{count}</span>}</h3>
       {children}
     </section>
   );
@@ -224,7 +224,7 @@ export function LibraryContent({ tab, query, filter, cols }: { tab: LibraryTab; 
   if (tab === "effects") {
     if (q) {
       const list = searchEffects(q);
-      return list.length ? <Section title="Results" count={list.length}><Grid cols={cols}>{list.map((e) => <EffectCard key={e.id} e={e} />)}</Grid></Section> : <Empty line="NO MATCH" hint="Try a mood, a decade or a medium: tape, ink, 90s, glass." />;
+      return list.length ? <Section title="Results" count={list.length}><Grid cols={cols}>{list.map((e) => <EffectCard key={e.id} e={e} />)}</Grid></Section> : <Empty line="No match" hint="Try a mood, a decade or a medium: tape, ink, 90s, glass." />;
     }
     const cats = filter === ALL ? CATEGORIES : CATEGORIES.filter((c) => c === filter);
     return (
@@ -241,7 +241,7 @@ export function LibraryContent({ tab, query, filter, cols }: { tab: LibraryTab; 
     const match = (p: BuiltinPreset) => !q || `${p.name} ${p.section} ${p.snapshot.graph.map((g) => `${g.id} ${getEffect(g.id)?.name ?? ""}`).join(" ")}`.toLowerCase().includes(q);
     const sections = filter === ALL || q ? PRESET_SECTIONS : PRESET_SECTIONS.filter((s) => s === filter);
     const any = BUILTIN_PRESETS.some(match);
-    if (!any) return <Empty line="NO MATCH" hint="Search by name or by an effect inside the preset." />;
+    if (!any) return <Empty line="No match" hint="Search by name or by an effect inside the preset." />;
     return (
       <>
         {sections.map((s) => {
@@ -256,7 +256,7 @@ export function LibraryContent({ tab, query, filter, cols }: { tab: LibraryTab; 
   if (tab === "favorites") {
     const fx = LIBRARY.filter((e) => favs.includes(e.id) && (!q || e.name.toLowerCase().includes(q)));
     const pr = BUILTIN_PRESETS.filter((p) => favs.includes(`preset:${p.id}`) && (!q || p.name.toLowerCase().includes(q)));
-    if (!fx.length && !pr.length) return <Empty line="NO FAVOURITES YET" hint="Hover any card and press the heart in its corner." />;
+    if (!fx.length && !pr.length) return <Empty line="No favourites yet" hint="Hover any card and press the heart in its corner." />;
     return (
       <>
         {pr.length > 0 && <Section title="Presets" count={pr.length}><Grid cols={cols}>{pr.map((p) => <PresetCard key={p.id} p={p} />)}</Grid></Section>}
@@ -272,7 +272,7 @@ export function LibraryContent({ tab, query, filter, cols }: { tab: LibraryTab; 
       {list.length ? (
         <Grid cols={cols}>{list.map((p) => <MyPresetCard key={p.id} p={p} />)}</Grid>
       ) : (
-        <Empty line="NO SAVED PRESETS" hint="Build a stack, then save it from // LAYERS." />
+        <Empty line="No saved presets" hint="Build a stack, then save it from // LAYERS." />
       )}
     </>
   );
@@ -293,8 +293,8 @@ function MyPresetTools() {
         input.onchange = async () => {
           const f = input.files?.[0];
           if (!f) return;
-          try { const n = importPresets(JSON.parse(await f.text())); useUI.getState().toast(`> IMPORTED ${n} PRESET${n === 1 ? "" : "S"}`, "success"); }
-          catch { useUI.getState().toast("> NOT A MONITOR PRESET FILE", "error"); }
+          try { const n = importPresets(JSON.parse(await f.text())); useUI.getState().toast(`Imported ${n} preset${n === 1 ? "" : "s"}`, "success"); }
+          catch { useUI.getState().toast("Not a Monitor preset file", "error"); }
         };
         input.click();
       }}><Icon name="upload" /></button>
@@ -305,8 +305,8 @@ function MyPresetTools() {
 function Empty({ line, hint }: { line: string; hint: string }) {
   return (
     <div className="py-10 text-center">
-      <p className="text-[11px] caps">&gt; {line}<span className="blink">_</span></p>
-      <p className="text-[11px] text-fg-muted mt-1">{hint}</p>
+      <p className="text-[13px] font-semibold">{line}</p>
+      <p className="text-[12px] text-fg-muted mt-1">{hint}</p>
     </div>
   );
 }
@@ -328,7 +328,7 @@ export function LibraryHeader({ tab, onTab, query, onQuery, trailing }: { tab: L
   return (
     <div className="flex items-center h-10 gap-0.5">
       {searching ? (
-        <label className="flex-1 flex items-center gap-2 h-8 px-2 border border-fg">
+        <label className="flex-1 flex items-center gap-2 h-8 px-3 rounded-full well">
           <Icon name="search" className="text-fg-muted" />
           <input
             autoFocus
@@ -342,7 +342,7 @@ export function LibraryHeader({ tab, onTab, query, onQuery, trailing }: { tab: L
         </label>
       ) : (
         <>
-          <div className="flex items-center flex-1 min-w-0 overflow-x-auto no-scrollbar">
+          <div className="seg flex-1 min-w-0 overflow-x-auto no-scrollbar">
             {TABS.map((t) => <button key={t.id} className={`tab ${tab === t.id ? "on" : ""}`} onClick={() => onTab(t.id)}>{t.label}</button>)}
           </div>
           <button className={`icon-btn ${tab === "favorites" ? "on" : ""}`} title={`Favourites (${favs})`} onClick={() => onTab(tab === "favorites" ? "presets" : "favorites")}><Icon name="heart" /></button>
@@ -422,7 +422,7 @@ export function LibraryBrowser() {
   return (
     <div className="fixed inset-0 z-[90] flex flex-col" style={{ background: "rgb(var(--bg))" }}>
       <div className="flex items-center gap-3 px-4 hair-b shrink-0">
-        <span className="slash text-[11px] caps shrink-0">Library</span>
+        <span className="slash text-[15px] font-semibold tracking-[-0.02em] shrink-0">Library</span>
         <div className="flex-1 max-w-xl"><LibraryHeader tab={tab} onTab={setTab} query={query} onQuery={setQuery} /></div>
         <button className="btn ml-auto" onClick={() => setOpen(false)}><Icon name="close" />Close <span className="kbd">ESC</span></button>
       </div>

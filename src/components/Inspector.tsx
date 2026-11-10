@@ -17,8 +17,8 @@ export function Inspector() {
       <div className="flex flex-col h-full">
         <div className="ph hair-b"><span className="slash">Params</span></div>
         <div className="p-3 text-[11px] text-fg-muted leading-relaxed">
-          <p className="text-fg caps">&gt; NO LAYER SELECTED<span className="blink">_</span></p>
-          <p className="mt-2">Pick a layer in // LAYERS, or add an effect from the library. Every effect has its own parameters plus shared pre-processing, blend and mask controls.</p>
+          <p className="text-fg text-[14px] font-semibold">No layer selected</p>
+          <p className="mt-2">Pick a layer, or add an effect from the library. Every effect has its own parameters plus shared pre-processing, blend and mask controls.</p>
         </div>
       </div>
     );
@@ -47,16 +47,17 @@ function LayerInspector({ layer }: { layer: Layer }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="ph hair-b">
-        <span className="slash truncate flex-1">FX.{effect.id.toUpperCase()}</span>
+        <span className="slash truncate flex-1">{effect.name}</span>
+        <span className="tag-chip">{effect.category}</span>
         <button className="icon-btn" title="Randomise [R]" onClick={() => ed.randomizeLayer(layer.uid)}><Icon name="dice" /></button>
         <button className="icon-btn" title="Reset layer" onClick={() => ed.resetLayer(layer.uid)}><Icon name="restart" /></button>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="px-3 pt-2 pb-1">
-          <p className="text-[12px] caps">{effect.name}{effect.handles && <span className="tag-chip ml-2">DRAG POINT ON CANVAS</span>}</p>
+        <div className={effect.handles ? "px-3.5 pt-2 pb-1" : "hidden"}>
+          {effect.handles && <p className="tag-signal">Drag the point on the canvas</p>}
         </div>
         {heroes.length > 0 && (
-          <div className={`grid gap-2 px-3 py-3 hair-b ${heroes.length === 3 ? "grid-cols-3" : heroes.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
+          <div className={`grid gap-2 mx-3 my-2 px-2 py-3 rounded-2xl well ${heroes.length === 3 ? "grid-cols-3" : heroes.length === 2 ? "grid-cols-2" : "grid-cols-1"}`}>
             {heroes.map((p) => p.type === "range" && (
               <div key={p.key} className="group flex flex-col items-center">
                 <Knob label={p.label} value={Number(values[p.key] ?? p.default)} min={p.min} max={p.max} step={p.step} def={p.default} unit={p.unit} onStart={start} onChange={(v) => set(p.key, v)} />
@@ -80,7 +81,7 @@ function LayerInspector({ layer }: { layer: Layer }) {
         <MaskSection layer={layer} />
         <Group title="Seed" collapsible defaultOpen={false}>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] tabular-nums flex-1">{layer.seed.toFixed(1)}</span>
+            <span className="tabular-nums flex-1">{layer.seed.toFixed(1)}</span>
             <button className="btn h-6" onClick={() => { start(); ed.setLayerProps(layer.uid, { seed: Math.round(Math.random() * 1000) / 10 }); }}><Icon name="dice" />Reroll</button>
           </div>
         </Group>
@@ -94,15 +95,15 @@ function Group({ title, children, collapsible = false, defaultOpen = true, right
   return (
     <div className="hair-b">
       {title && (
-        <div className="flex items-center h-7 px-3">
-          <button className="flex items-center gap-1.5 flex-1 text-[10px] caps text-fg-2 hover:text-fg text-left" onClick={() => collapsible && setOpen(!open)}>
+        <div className="flex items-center h-9 px-3.5">
+          <button className="flex items-center gap-1.5 flex-1 text-[12.5px] font-semibold text-fg text-left" onClick={() => collapsible && setOpen(!open)}>
             {collapsible && <Icon name={open ? "chevronDown" : "chevronRight"} />}
             <span className="slash">{title}</span>
           </button>
           {right}
         </div>
       )}
-      {open && <div className="px-3 pb-3 pt-1 flex flex-col gap-2.5">{children}</div>}
+      {open && <div className="px-3.5 pb-4 pt-0.5 flex flex-col gap-3">{children}</div>}
     </div>
   );
 }
@@ -178,7 +179,7 @@ function ParamControl({ p, layer, value, set, start }: { p: ParamDef; layer: Lay
               ))}
             </div>
           ) : (
-            <select className="field h-7 caps text-[11px] cursor-pointer" style={{ background: "rgb(var(--bg))" }} value={Number(value)} onChange={(e) => { start(); set(p.key, Number(e.target.value)); }}>
+            <select className="field h-8 cursor-pointer font-medium" value={Number(value)} onChange={(e) => { start(); set(p.key, Number(e.target.value)); }}>
               {p.options.map((o, i) => <option key={o} value={i}>{o}</option>)}
             </select>
           )}
@@ -284,7 +285,7 @@ function BlendSection({ layer }: { layer: Layer }) {
       <Slider label="Opacity" value={layer.opacity} min={0} max={1} step={0.01} def={1} onStart={() => ed.checkpoint()} onChange={(v) => ed.setLayerProps(layer.uid, { opacity: v })} />
       <label className="flex items-center gap-2">
         <span className="caps text-[10px] text-fg-2 flex-1">Mode</span>
-        <select className="field h-7 w-36 caps text-[11px] cursor-pointer" style={{ background: "rgb(var(--bg))" }} value={layer.blend} onChange={(e) => { ed.checkpoint(); ed.setLayerProps(layer.uid, { blend: Number(e.target.value) }); }}>
+        <select className="field h-8 w-36 cursor-pointer font-medium" value={layer.blend} onChange={(e) => { ed.checkpoint(); ed.setLayerProps(layer.uid, { blend: Number(e.target.value) }); }}>
           {BLEND_MODES.map((m, i) => <option key={m} value={i}>{m}</option>)}
         </select>
       </label>
@@ -344,7 +345,7 @@ function MaskSection({ layer }: { layer: Layer }) {
               <button key={o} className={`flex-1 h-6 text-[10px] caps ${Math.round(m[4]) === i ? "bg-fg text-bg" : "text-fg-2 hover:text-fg"}`} onClick={() => { ed.checkpoint(); setAt(4, i); }}>{o}</button>
             ))}
           </div>
-          <p className="text-[10px] text-fg-muted">&gt; Effect shows where brightness is between LOW and HIGH.</p>
+          <p className="text-[11.5px] text-fg-muted">The effect shows where brightness is between low and high.</p>
         </>
       )}
     </Group>

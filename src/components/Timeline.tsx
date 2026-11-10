@@ -37,10 +37,10 @@ export function Transport() {
 
   return (
     <div className="hair-t shrink-0" data-screen-scope>
-      <div className="flex items-center gap-2 h-9 px-2">
-        <button className="icon-btn" title="Play / pause [Space]" onClick={() => ed.set({ playing: !playing })}><Icon name={playing ? "pause" : "play"} /></button>
+      <div className="flex items-center gap-2 h-12 px-3">
+        <button className="icon-btn w-9 h-9 bg-fg text-bg hover:!bg-signal hover:!text-bone" title="Play / pause [Space]" onClick={() => ed.set({ playing: !playing })}><Icon name={playing ? "pause" : "play"} /></button>
         <button className="icon-btn" title="Restart" onClick={() => { ed.set({ time: 0 }); if (media?.kind === "video") (media.element as HTMLVideoElement).currentTime = 0; }}><Icon name="restart" /></button>
-        <span className="screen-readout px-1.5 py-0.5 tabular-nums" style={{ background: "var(--scr-bg)" }}>{timecode(time)}</span>
+        <span className="screen-readout">{timecode(time)}</span>
         <div
           ref={track}
           className="relative flex-1 h-6 cursor-pointer touch-none"
@@ -52,28 +52,28 @@ export function Transport() {
             window.addEventListener("pointerup", up);
           }}
         >
-          <div className="absolute left-0 right-0 top-1/2 h-px bg-line" />
-          {Array.from({ length: 11 }, (_, i) => <div key={i} className="absolute top-1/2 w-px h-1.5 bg-line" style={{ left: `${i * 10}%` }} />)}
-          <div className="absolute top-1/2 h-px bg-fg" style={{ width: `${(time / Math.max(total, 0.01)) * 100}%` }} />
-          <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-signal" style={{ left: `${(time / Math.max(total, 0.01)) * 100}%` }} />
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 rounded-full well" />
+          {Array.from({ length: 11 }, (_, i) => <div key={i} className="absolute top-1/2 mt-1.5 w-px h-1 bg-fg/20" style={{ left: `${i * 10}%` }} />)}
+          <div className="absolute top-1/2 -translate-y-1/2 h-1 rounded-full bg-signal" style={{ width: `${(time / Math.max(total, 0.01)) * 100}%` }} />
+          <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-fg shadow-[0_0_0_3px_rgb(var(--signal)/0.35)]" style={{ left: `${(time / Math.max(total, 0.01)) * 100}%` }} />
         </div>
-        <span className="screen-readout px-1.5 py-0.5 hidden sm:inline" style={{ background: "var(--scr-bg)" }}>{timecode(total)}</span>
+        <span className="screen-readout hidden sm:inline-flex text-fg-muted">{timecode(total)}</span>
         {media?.kind !== "video" && (
-          <label className="flex items-center gap-1 text-[10px] caps text-fg-muted" title="Loop length for animation and video export">
-            LEN
-            <input type="number" min={1} max={600} step={0.5} className="field h-6 w-14 text-[11px]" value={duration} onChange={(e) => ed.set({ duration: Math.max(0.5, Math.min(600, Number(e.target.value) || 5)) })} />s
+          <label className="flex items-center gap-1.5 text-[12px] text-fg-muted" title="Loop length for animation and video export">
+            Loop
+            <input type="number" min={1} max={600} step={0.5} className="field h-7 w-14 tabular-nums" value={duration} onChange={(e) => ed.set({ duration: Math.max(0.5, Math.min(600, Number(e.target.value) || 5)) })} />s
           </label>
         )}
         <button className={`icon-btn ${open ? "on" : ""}`} title="Animation lanes" onClick={() => ed.set({ timelineOpen: !open })}><Icon name="diamond" /></button>
       </div>
       {open && (
         <div className="max-h-40 overflow-y-auto hair-t">
-          {!animated.length && <p className="px-3 py-2 text-[10px] caps text-fg-muted">&gt; Nothing animated yet. Hover a slider: ◆ adds keyframes at the playhead, ~ loops it with a wave.</p>}
+          {!animated.length && <p className="px-3 py-2 text-[12px] text-fg-muted">Nothing animated yet. Hover a slider: ◆ adds keyframes at the playhead, ~ loops it with a wave.</p>}
           {animated.flatMap((l) => Object.entries(l.keyframes).map(([k, kfs]) => {
             const p = getEffect(l.effectId)?.params.find((x) => x.key === k);
             return (
-              <div key={`${l.uid}-${k}`} className="flex items-center h-6 hair-b">
-                <span className="w-40 shrink-0 px-2 text-[10px] caps truncate text-fg-2">{l.name} · {p?.label ?? k}</span>
+              <div key={`${l.uid}-${k}`} className="flex items-center h-7 hair-b">
+                <span className="w-44 shrink-0 px-3 text-[11.5px] font-medium truncate text-fg-2">{l.name} · {p?.label ?? k}</span>
                 <div className="relative flex-1 h-full">
                   {kfs.map((kf) => (
                     <button
@@ -109,8 +109,8 @@ click: jump · drag: move · right-click: change easing · alt-click: delete`}
             const p = getEffect(l.effectId)?.params.find((x) => x.key === k);
             const pts = Array.from({ length: 121 }, (_, i) => `${i / 1.2},${10 - wave(m.shape, (i / 120) * m.cycles + m.phase, m.cycles) * 8 * Math.max(m.depth * 2, 0.15)}`).join(" ");
             return (
-              <div key={`${l.uid}-mod-${k}`} className="flex items-center h-6 hair-b">
-                <span className="w-40 shrink-0 px-2 text-[10px] caps truncate text-fg-2">{l.name} · {p?.label ?? k} <span className="text-signal">~{m.shape}</span></span>
+              <div key={`${l.uid}-mod-${k}`} className="flex items-center h-7 hair-b">
+                <span className="w-44 shrink-0 px-3 text-[11.5px] font-medium truncate text-fg-2">{l.name} · {p?.label ?? k} <span className="text-signal">~{m.shape}</span></span>
                 <svg className="flex-1 h-full text-signal" viewBox="0 0 100 20" preserveAspectRatio="none"><polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" /></svg>
               </div>
             );
@@ -121,7 +121,7 @@ click: jump · drag: move · right-click: change easing · alt-click: delete`}
   );
 }
 
-/** Status bar (UI kit 16:40): resolution, fps, GPU, render time and an idle cursor. */
+/** Status bar: who made it (bottom left), then readouts: resolution, fps, render time, GPU. */
 export function StatusBar() {
   const media = useEditor((s) => s.media);
   const layers = useEditor((s) => s.layers);
@@ -129,19 +129,18 @@ export function StatusBar() {
   const job = useExportJob((s) => s.progress);
   const live = stackIsAnimated(layers);
   return (
-    <footer className="flex items-center gap-4 h-6 px-3 hair-t shrink-0 text-[10px] caps text-fg-muted overflow-hidden whitespace-nowrap">
-      <span className="flex items-center gap-1.5 text-fg">
-        <span className={`w-1.5 h-1.5 ${job ? "bg-signal blink" : live ? "bg-signal" : "bg-fg"}`} />
-        {job ? `${job.label}` : media ? "MONITOR READY" : "NO SIGNAL"}
-        {!job && <span className="blink">_</span>}
+    <footer className="flex items-center gap-4 h-8 px-4 shrink-0 text-[11.5px] text-fg-muted overflow-hidden whitespace-nowrap">
+      <a href="/" className="font-serif text-[11px] tracking-[0.32em] text-fg-2 hover:text-fg"><i className="tracking-normal text-fg-muted mr-1.5">by</i>ARMGDN</a>
+      <span className="flex items-center gap-1.5 text-fg font-medium">
+        <span className={`w-1.5 h-1.5 rounded-full ${job ? "bg-signal blink" : live ? "bg-signal" : "bg-fg"}`} />
+        {job ? job.label : media ? "Ready" : "No signal"}
       </span>
-      {media && <span>SRC {media.width}×{media.height}</span>}
-      {v.workW > 0 && <span className="hidden sm:inline">VIEW {v.workW}×{v.workH}</span>}
-      <span>{live ? `${v.fps} FPS` : "IDLE"}</span>
-      <span className="hidden sm:inline">{v.renderMs.toFixed(1)} MS</span>
+      {media && <span>Source <span className="tabular-nums text-fg-2">{media.width}×{media.height}</span></span>}
+      {v.workW > 0 && <span className="hidden sm:inline">View <span className="tabular-nums text-fg-2">{v.workW}×{v.workH}</span></span>}
+      <span className="tabular-nums">{live ? `${v.fps} fps` : "Idle"}</span>
+      <span className="hidden sm:inline tabular-nums">{v.renderMs.toFixed(1)} ms</span>
       <span>{layers.filter((l) => l.enabled).length} FX</span>
-      <span className="hidden md:inline truncate">GPU {v.gpu || "—"}</span>
-      <span className="ml-auto hidden lg:inline font-serif normal-case tracking-[0.3em] text-fg-2">THE CHAOS TO CREATE</span>
+      <span className="hidden md:inline truncate ml-auto">{v.gpu || ""}</span>
     </footer>
   );
 }
