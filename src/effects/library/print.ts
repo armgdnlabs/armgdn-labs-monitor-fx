@@ -1,5 +1,4 @@
-import { imageTexture } from "../../lib/textures";
-import { textureUrl } from "./overlay";
+import { surfaceTexture } from "../../lib/surfaces";
 import { angle, color, group, hero, range, select, single, toggle, type EffectDef } from "../types";
 
 
@@ -131,14 +130,9 @@ void main() {
     passes: single(INK_GLSL + `
 // Membership of a hue in six bands (reds, yellows, greens, cyans, blues, magentas).
 float band(float h, float c) { float d = abs(fract(h - c + 0.5) - 0.5); return smoothstep(1.0 / 6.0, 0.0, d); }
-float inkAmount(vec2 uv, float r, float y, float g, float cy, float b, float m) {
-  vec3 col = texture(uTex0, uv).rgb;
-  vec3 hsv = rgb2hsv(col);
+float hueW(vec3 hsv, float r, float y, float g, float cy, float b, float m) {
   float h = hsv.x;
-  float w = band(h, 0.0) * r + band(h, 1.0 / 6.0) * y + band(h, 2.0 / 6.0) * g + band(h, 3.0 / 6.0) * cy + band(h, 4.0 / 6.0) * b + band(h, 5.0 / 6.0) * m;
-  float dark = 1.0 - hsv.z;
-  // Neutral tones print as darkness; coloured tones go to the inks whose hue sliders are high.
-  return sat(dark * 0.55 + hsv.y * hsv.z * w * 0.3 + dark * hsv.y * 0.2 * w);
+  return band(h, 0.0) * r + band(h, 1.0 / 6.0) * y + band(h, 2.0 / 6.0) * g + band(h, 3.0 / 6.0) * cy + band(h, 4.0 / 6.0) * b + band(h, 5.0 / 6.0) * m;
 }
 float grainAtPx(vec2 uv, float k) {
   vec2 p = refCoord(uv) / max(u_grainScale * 6.0, 0.3);
@@ -149,16 +143,42 @@ float layer(float amt, float k) {
   float n = grainAtPx(vUv, k);
   float e = max(u_grainSoft * 0.3, 0.01);
   float cov = smoothstep(n - e, n + e, amt);
-  return mix(amt, cov, u_grainOpacity);
+  return mix(amt, cov, u_grainOpacity * 0.6);
+}
+// Ink amounts that reproduce colour c on the paper: non-negative least squares on absorption
+// (Gauss-Seidel, a few sweeps), then each ink's hue sliders push it up or down in coloured areas.
+vec4 separate(vec3 c, mat4x3 A, vec4 on) {
+  vec3 target = max(u_paper - c, 0.0);
+  vec4 x = vec4(0.0);
+  for (int it = 0; it < 10; it++) {
+    for (int k = 0; k < 4; k++) {
+      if (on[k] < 0.5) continue;
+      vec3 r = target - (A[0] * x[0] + A[1] * x[1] + A[2] * x[2] + A[3] * x[3]);
+      x[k] = clamp(x[k] + dot(r, A[k]) / max(dot(A[k], A[k]), 1e-3), 0.0, 1.0);
+    }
+  }
+  return x * on;
 }
 void main() {
   vec4 c = texture(uTex0, vUv);
-  vec3 o = u_paper;
   vec2 px = 1.0 / uRes * refScale();
-  if (u_r1On > 0.5) o *= mix(vec3(1.0), inkColor(u_r1), layer(inkAmount(vUv - vec2(u_r1X, u_r1Y) * px, u_r1reds, u_r1yellows, u_r1greens, u_r1cyans, u_r1blues, u_r1magentas), 1.0));
-  if (u_r2On > 0.5) o *= mix(vec3(1.0), inkColor(u_r2), layer(inkAmount(vUv - vec2(u_r2X, u_r2Y) * px, u_r2reds, u_r2yellows, u_r2greens, u_r2cyans, u_r2blues, u_r2magentas), 2.0));
-  if (u_r3On > 0.5) o *= mix(vec3(1.0), inkColor(u_r3), layer(inkAmount(vUv - vec2(u_r3X, u_r3Y) * px, u_r3reds, u_r3yellows, u_r3greens, u_r3cyans, u_r3blues, u_r3magentas), 3.0));
-  if (u_r4On > 0.5) o *= mix(vec3(1.0), inkColor(u_r4), layer(inkAmount(vUv - vec2(u_r4X, u_r4Y) * px, u_r4reds, u_r4yellows, u_r4greens, u_r4cyans, u_r4blues, u_r4magentas), 4.0));
+  vec3 I1 = inkColor(u_r1), I2 = inkColor(u_r2), I3 = inkColor(u_r3), I4 = inkColor(u_r4);
+  mat4x3 A = mat4x3(u_paper * (1.0 - I1), u_paper * (1.0 - I2), u_paper * (1.0 - I3), u_paper * (1.0 - I4));
+  vec4 on = vec4(u_r1On, u_r2On, u_r3On, u_r4On);
+  // Each ink is separated from its own (shifted) sample so misregistration looks like misregistration.
+  vec3 c1 = texture(uTex0, vUv - vec2(u_r1X, u_r1Y) * px).rgb, c2 = texture(uTex0, vUv - vec2(u_r2X, u_r2Y) * px).rgb;
+  vec3 c3 = texture(uTex0, vUv - vec2(u_r3X, u_r3Y) * px).rgb, c4 = texture(uTex0, vUv - vec2(u_r4X, u_r4Y) * px).rgb;
+  vec4 x = vec4(separate(c1, A, on).x, separate(c2, A, on).y, separate(c3, A, on).z, separate(c4, A, on).w);
+  vec3 h1 = rgb2hsv(c1), h2 = rgb2hsv(c2), h3 = rgb2hsv(c3), h4 = rgb2hsv(c4);
+  x.x *= clamp(1.0 + hueW(h1, u_r1reds, u_r1yellows, u_r1greens, u_r1cyans, u_r1blues, u_r1magentas) * 0.12 * h1.y, 0.0, 2.0);
+  x.y *= clamp(1.0 + hueW(h2, u_r2reds, u_r2yellows, u_r2greens, u_r2cyans, u_r2blues, u_r2magentas) * 0.12 * h2.y, 0.0, 2.0);
+  x.z *= clamp(1.0 + hueW(h3, u_r3reds, u_r3yellows, u_r3greens, u_r3cyans, u_r3blues, u_r3magentas) * 0.12 * h3.y, 0.0, 2.0);
+  x.w *= clamp(1.0 + hueW(h4, u_r4reds, u_r4yellows, u_r4greens, u_r4cyans, u_r4blues, u_r4magentas) * 0.12 * h4.y, 0.0, 2.0);
+  vec3 o = u_paper;
+  o *= mix(vec3(1.0), I1, layer(sat(x.x), 1.0) * on.x);
+  o *= mix(vec3(1.0), I2, layer(sat(x.y), 2.0) * on.y);
+  o *= mix(vec3(1.0), I3, layer(sat(x.z), 3.0) * on.z);
+  o *= mix(vec3(1.0), I4, layer(sat(x.w), 4.0) * on.w);
   fragColor = vec4(o, c.a);
 }`),
   },
@@ -177,22 +197,28 @@ void main() {
       range("distortion", "Distortion", 0, 3, 1, 0.1),
       range("distScale", "Distortion scale", 300, 1000, 500, 1),
     ],
-    aux: (v) => [imageTexture(textureUrl(Number(v.textureMode) > 0.5 ? 0 : 4))],
+    aux: (v) => [surfaceTexture(Number(v.textureMode) > 0.5 ? 1 : 3)],
     passes: single(`
+vec2 warp(vec2 uv) {
+  // Paper never lies flat on the glass: a slow, smooth warp, a few pixels at most.
+  vec2 q = uv * vec2(aspect(), 1.0) * (1000.0 / u_distScale) * 2.0 + uSeed * 0.37;
+  return vec2(fbm(q), fbm(q + 5.2)) - 0.5;
+}
 void main() {
-  // Scanner wobble: low-frequency warp, a few pixels at most.
-  vec2 w = vec2(snoise(vUv * u_distScale / 100.0 + uSeed), snoise(vUv * u_distScale / 100.0 + 7.3 + uSeed));
-  vec2 uv = vUv + w * refPx(u_distortion * 1.5);
-  vec4 c = texture(uTex0, uv);
-  vec3 x = sat((c.rgb - 0.5) * u_contrast + 0.5 + u_brightness * 0.5);
-  vec2 p = (vUv - 0.5) * vec2(aspect(), 1.0) / u_texScale;
-  float ta = uAuxRes0.x / max(uAuxRes0.y, 1.0);
-  float s = max(1.0, aspect() / ta);
-  vec3 paper = texture(uAux0, p / vec2(s * ta, s) + 0.5).rgb;
-  vec3 pn = paper / max(luma(paper), 0.2) * 0.92;
-  // Ink sits on the paper: multiply, and the paper's own relief shows through highlights.
-  vec3 printed = x * pn + (luma(paper) - 0.8) * 0.25;
-  fragColor = vec4(sat(mix(x, printed, u_opacity)), c.a);
+  vec2 uv = vUv + warp(vUv) * refPx(u_distortion * 6.0);
+  // Scanner optics: a touch softer than the original.
+  vec3 x = blur13(uTex0, uv, refPx(0.6)).rgb;
+  // Brightness fades the print towards paper white (or darkens it below zero).
+  x = u_brightness >= 0.0 ? mix(x, vec3(1.0), u_brightness * 0.6) : x * (1.0 + u_brightness);
+  // The paper, tiled at its scanned resolution so fibres stay fine; contrast sets how much it shows.
+  vec2 tp = (vUv - 0.5) * uRes / (uAuxRes0 * refScale() * u_texScale * 0.6) + 0.5;
+  float paper = luma(texture(uAux0, tp).rgb);
+  float pm = (paper / 0.85 - 1.0) * u_contrast * 0.45;
+  // Ink sits in the paper: blacks lift to the scan floor, the tooth shows most in highlights.
+  vec3 ink = mix(vec3(0.04), vec3(1.0), x);
+  vec3 printed = ink * (1.0 + pm * (0.35 + 0.65 * luma(x)));
+  printed = mix(printed, vec3(luma(printed)), 0.06) + (hash12(vUv * uRes + uSeed) - 0.5) * 0.02;
+  fragColor = vec4(sat(mix(texture(uTex0, vUv).rgb, printed, u_opacity)), 1.0);
 }`),
   },
   {
@@ -219,11 +245,12 @@ float piece(vec2 p, vec2 cell, out vec2 local, out float hidden) {
   float h3 = hash12(cell * 1.7 + u_seed);
   hidden = step(h3, u_missing / 100.0);
   vec2 c = (cell + 0.5) / n;
-  vec2 half_ = 0.5 / n * (1.0 + (h - 0.5) * vec2(u_widthVar, u_heightVar)) * (1.0 + (h3 - 0.5) * u_sizeVar);
+  // Pieces only ever grow from their cell, so neighbours overlap instead of leaving gaps.
+  vec2 half_ = 0.5 / n * (1.0 + h * vec2(u_widthVar, u_heightVar) * 0.5) * (1.0 + h3 * u_sizeVar * 0.5);
   float a = radians((h.x - 0.5) * 2.0 * u_rotation);
   vec2 q = rot(a) * ((p - c) * vec2(aspect(), 1.0)) / vec2(aspect(), 1.0);
   local = q / (half_ * 2.0) + 0.5;
-  vec2 d = abs(q) - half_ * 0.94;
+  vec2 d = abs(q) - half_ * 1.04;
   float box = max(d.x, d.y) / max(half_.y, 1e-3);
   // Torn edge: fractal wobble; chunk size scales the bites, roughness the fine fibre.
   float tear = (fbm(q * vec2(aspect(), 1.0) * (6.0 + (1.0 - u_chunk) * 30.0) + cell * 3.1) - 0.5) * u_tear * 0.25;
@@ -284,22 +311,23 @@ void main() {
 void main() {
   vec4 c = texture(uTex0, vUv);
   float grow = u_reset > 0.0 ? fract(uTime / u_reset) : 1.0;
-  float r = u_spread * grow;
+  // Spread is in units of ~14 reference pixels: ink travels far, in furry, noise-shaped blots.
+  float r = u_spread * 14.0 * grow;
   vec2 flow = vec2(u_dirX, u_dirY);
   float ink = 1.0 - luma(c.rgb);
   vec3 darkest = c.rgb;
   // Gather from a noisy neighbourhood biased upstream; ink only ever darkens.
-  for (int i = 0; i < 24; i++) {
+  for (int i = 0; i < 40; i++) {
     float fi = float(i);
     float a = fi * 2.39996;
-    float rr = sqrt((fi + 0.5) / 24.0);
+    float rr = sqrt((fi + 0.5) / 40.0);
     vec2 o = vec2(cos(a), sin(a)) * rr;
     float fib = vnoise(vUv * uRes / refScale() / u_noiseSize * 6.0 + o * 3.0 + uSeed);
     vec2 off = (o * fib * 1.6 - flow * rr) * refPx(r);
     vec3 s = texture(uTex0, vUv + off).rgb;
     float m = smoothstep(u_maskLo, u_maskHi, 1.0 - luma(s));
     float w = exp(-rr * u_decay * 40.0) * mix(1.0, m, u_maskStrength);
-    darkest = mix(darkest, min(darkest, s), w * u_intensity * 1.5);
+    darkest = mix(darkest, min(darkest, s), sat(w * u_intensity * 4.0));
   }
   float g = (hash12(floor(refCoord(vUv) / u_grainSize) + uSeed) - 0.5) * u_grain * 0.15;
   vec3 o = darkest + g * (1.0 - luma(darkest));
@@ -356,12 +384,12 @@ void main() {
     description: "Shapes from the image extruded with a bevel profile and a material.",
     keywords: "3d chrome metal extrude letterpress",
     params: [
-      select("shapeFrom", "Shape from", ["Luminance", "Saturation", "Alpha"]),
+      select("shapeFrom", "Shape from", ["Luma", "Alpha"]),
       hero("threshold", "Threshold", 0.01, 0.99, 0.5),
       toggle("invert", "Invert mask"),
-      hero("size", "Size", 1, 200, 40, 1),
+      hero("size", "Size", 1, 1000, 40, 1),
       range("depth", "Depth", 0, 4, 2, 0.05),
-      select("direction", "Direction", ["Up", "Down"]),
+      select("direction", "Direction", ["Inner", "Outer", "Both"], 2),
       select("profile", "Profile", ["Linear", "Round", "Cove", "Ogee", "Chisel", "Step", "Pillow", "Ridge", "Double", "Soft", "Sharp", "Wave", "Groove", "Bulb", "Sine", "Inverse round", "Plateau", "Triple step", "Ripple"]),
       select("material", "Material", MATERIAL_NAMES, 2),
       range("lightX", "Light direction X", -1, 1, -0.5),
@@ -372,7 +400,7 @@ void main() {
 float inside(vec2 uv) {
   vec4 c = texture(uTex0, uv);
   int s = int(u_shapeFrom + 0.5);
-  float v = s == 1 ? rgb2hsv(c.rgb).y : s == 2 ? c.a : luma(c.rgb);
+  float v = s == 1 ? c.a : luma(c.rgb);
   float m = step(u_threshold, v);
   return u_invert > 0.5 ? 1.0 - m : m;
 }
@@ -414,7 +442,9 @@ void main() {
   }
   float t = sat(dist / r);
   int p = int(u_profile + 0.5);
-  float hgt = prof(t, p) * u_depth * (u_direction > 0.5 ? -1.0 : 1.0) * m;
+  int dir = int(u_direction + 0.5);
+  float side = dir == 0 ? m : dir == 1 ? 1.0 - m : 1.0;
+  float hgt = prof(t, p) * u_depth * side;
   // Normal from the height field around this point.
   vec2 ex = vec2(2.0, 0.0) / uRes;
   float hx = prof(sat(dist / r + 0.02), p) - prof(sat(dist / r - 0.02), p);

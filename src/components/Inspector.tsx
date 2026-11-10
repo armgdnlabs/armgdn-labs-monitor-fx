@@ -228,6 +228,26 @@ function ParamControl({ p, layer, value, set, start }: { p: ParamDef; layer: Lay
       );
     case "image":
       return <ImageControl label={p.label} value={String(value)} onChange={(v) => { start(); set(p.key, v); }} />;
+    case "palette": {
+      const cols = String(value || "").split(/\s+/).filter(Boolean);
+      return (
+        <div className="flex flex-col gap-1">
+          <span className="caps text-[10px] text-fg-2">{p.label}</span>
+          <div className="grid grid-cols-9 gap-[2px]">
+            {Array.from({ length: 18 }, (_, i) => (
+              <input
+                key={i}
+                type="color"
+                title={`Colour ${i + 1}`}
+                className="w-full h-5 p-0 border border-line cursor-pointer bg-transparent"
+                value={cols[i] ?? "#000000"}
+                onChange={(e) => { const next = Array.from({ length: 18 }, (_, k) => cols[k] ?? "#000000"); next[i] = e.target.value.toUpperCase(); start(); set(p.key, next.join(" ")); }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
   }
 }
 

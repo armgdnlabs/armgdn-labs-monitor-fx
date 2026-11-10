@@ -164,7 +164,7 @@ export const film: EffectDef[] = [
     preview: "film:4",
     animated: true,
     params: [
-      select("type", "Stock", ["Fine 50", "Portrait 160", "Portrait 400", "Gold 200", "Cine 500T", "Cine 50D", "Tri-X 400", "HP 800", "Delta 3200", "Super 8", "16 mm", "Push 1600", "Instant", "Expired", "Xerox"], 2),
+      select("type", "Stock", ["Fine 50", "Portrait 160", "Portrait 400", "Gold 200", "Cine 500T", "Cine 50D", "Tri-X 400", "HP 800", "Delta 3200", "Super 8", "16 mm", "Push 1600", "Instant", "Expired", "Xerox", "Fine 100", "Cine 250D", "Expired 800"], 0),
       hero("amount", "Amount", 0, 1, 0.5),
       hero("size", "Size", 0.5, 3, 1, 0.01),
       ...group("Response", [range("shadows", "Shadows", 0, 1, 0.5), range("midtones", "Midtones", 0, 1, 1), range("highlights", "Highlights", 0, 1, 0.5)]),
@@ -188,6 +188,9 @@ vec4 stock(int t) {
   if (t == 11) return vec4(2.0, 0.95, 0.6, 1.4);
   if (t == 12) return vec4(1.2, 0.3, 0.4, 0.7);
   if (t == 13) return vec4(1.8, 0.85, 1.0, 1.3);
+  if (t == 15) return vec4(0.75, 0.22, 0.55, 0.5);
+  if (t == 16) return vec4(1.0, 0.35, 0.65, 0.7);
+  if (t == 17) return vec4(2.4, 0.9, 1.0, 1.45);
   return vec4(1.0, 1.0, 0.0, 1.6);
 }
 float clump(vec2 p, float rough, float t) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Renderer, type RenderLayer } from "./Renderer";
 import { getPhoto, PHOTOS, photoUrl } from "../data/photos";
+import { onAuxImageLoad } from "../lib/textures";
 
 export const THUMB_W = 240;
 export const THUMB_H = 300;
@@ -82,6 +83,12 @@ class ThumbnailService {
     img.src = photoUrl(p, THUMB_W * 2, THUMB_H * 2);
   }
 
+  private auxWait: (() => void) | null = null;
+  private waitAux() {
+    if (this.auxWait) return;
+    this.auxWait = onAuxImageLoad(() => { this.auxWait?.(); this.auxWait = null; this.schedule(); });
+  }
+
   private schedule() {
     if (this.scheduled) return;
     this.scheduled = true;
@@ -100,12 +107,14 @@ class ThumbnailService {
       const job = this.queue[i];
       const photo = this.photos.get(job.photo);
       if (!photo) { i++; continue; } // still loading
+      const layers = job.layers();
+      // Wait for textures (layer mix, displacement…) so the preview never bakes in a grey placeholder.
+      if (layers.some((l) => (l.effect.aux?.(l.values) ?? []).some((a) => /^(img:0:|surface:\d+:0)/.test(a.key)))) { this.waitAux(); i++; continue; }
       this.queue.splice(i, 1);
       if (photo === "error") { this.cache.set(job.key, ""); rendered = true; continue; }
       try {
         r.setSource(photo, photo.naturalWidth, photo.naturalHeight);
         r.resetFeedback();
-        const layers = job.layers();
         if (job.frames) {
           // Scrub strip: render through the loop, keeping every few frames so feedback
           // effects (trails, datamosh) build up the way they do in the editor.

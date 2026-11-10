@@ -25,18 +25,18 @@ export const PALETTES: { name: string; colors: string[] }[] = [
   { name: "Ocean blue", colors: ["#03111F", "#0B3A66", "#29A1FF", "#B8E4FF", "#F4FBFF"] },
   { name: "Faded copy", colors: ["#1F4D4A", "#3E8A7E", "#C9D46B", "#F3F0D8"] },
 ];
-/** Ten thermal palettes, one LUT row each (order matches the Thermal "Gradient type" list). */
+/** Ten thermal palettes, one LUT row each (order matches the Thermal "Gradient type" list), measured as brightness → colour. */
 const THERMAL_RAMPS = [
-  "#000000@0,#2A0A5E@0.2,#8E1A7A@0.4,#E2462A@0.6,#FBB22B@0.8,#FFFBD9@1",
-  "#1A0B4D@0,#2B3BD9@0.2,#16C6E6@0.4,#59E05A@0.6,#F5D52A@0.8,#E8231C@1",
-  "#000000@0,#FFFFFF@1",
-  "#FFFFFF@0,#000000@1",
-  "#000814@0,#003566@0.35,#4CC9F0@0.7,#F1FAFF@1",
-  "#000000@0,#5C0A00@0.3,#D3202A@0.55,#FF8C1A@0.8,#FFF3B0@1",
-  "#00205B@0,#0077B6@0.25,#2BC56B@0.5,#F4E04D@0.75,#E5383B@1",
-  "#000A00@0,#0F3D12@0.4,#4CFF6E@0.8,#D9FFDD@1",
-  "#1F0047@0,#B30059@0.35,#FF6A00@0.65,#FFF700@1",
-  "#120B07@0,#5C3A1E@0.4,#C78B4A@0.75,#F5E3C3@1",
+  "#020127@0.031,#050246@0.094,#0D016F@0.156,#310178@0.219,#5B017B@0.281,#8B016E@0.344,#B40247@0.406,#E1041C@0.469,#F81D07@0.531,#FA4D08@0.594,#FB7E08@0.656,#FCAC07@0.719,#FDD80A@0.781,#FDF926@0.844,#FEFD73@0.906,#FDFEBB@0.969",
+  "#1B0101@0.031,#320202@0.094,#530102@0.156,#710101@0.219,#8F0101@0.281,#B00101@0.344,#CC0201@0.406,#EB0302@0.469,#FA1304@0.531,#FB3205@0.594,#FC5205@0.656,#FD7008@0.719,#FD8F25@0.781,#FDB063@0.844,#FDCF9E@0.906,#FDE9D1@0.969",
+  "#FA2802@0.031,#F54D06@0.094,#F78006@0.156,#F9AE06@0.219,#FBDA05@0.281,#DEFA05@0.344,#91FB07@0.406,#36FA08@0.469,#09FA37@0.531,#09F993@0.594,#0AEDE6@0.656,#09A4F3@0.719,#064BF1@0.781,#100AE3@0.844,#3804C3@0.906,#5D02A1@0.969",
+  "#011392@0.031,#0225A1@0.094,#023FB9@0.156,#0156D1@0.219,#026DE9@0.281,#0186F3@0.344,#029BDF@0.406,#02B4C9@0.469,#04CDB2@0.531,#05E39B@0.594,#0DF784@0.656,#2FFD6C@0.719,#5AFD57@0.781,#8AFD3F@0.844,#B6FE2A@0.906,#DCFE14@0.969",
+  "#280102@0.031,#490202@0.094,#7B0202@0.156,#A90201@0.219,#D50301@0.281,#F71202@0.344,#F93A03@0.406,#FB6B05@0.469,#FC9C06@0.531,#FDCA08@0.594,#FEF410@0.656,#FEFD31@0.719,#FEFD5C@0.781,#FEFD8A@0.844,#FEFEB6@0.906,#FDFEDC@0.969",
+  "#100115@0.031,#1F0125@0.094,#32013F@0.156,#450155@0.219,#5D015F@0.281,#7D015B@0.344,#9A0255@0.406,#B9034E@0.469,#D01343@0.531,#DD3232@0.594,#EB5220@0.656,#F77010@0.719,#FC8F17@0.781,#FDB035@0.844,#FDCF53@0.906,#FDE869@0.969",
+  "#3C0B5C@0.031,#351562@0.094,#2C216E@0.156,#242E78@0.219,#1D3D7D@0.281,#15507E@0.344,#0E617E@0.406,#07747E@0.469,#0E8579@0.531,#20926D@0.594,#339F61@0.656,#45AB54@0.719,#61B846@0.781,#87C634@0.844,#ABD223@0.906,#C9DD10@0.969",
+  "#010D01@0.031,#021902@0.094,#022A01@0.156,#013C01@0.219,#015201@0.281,#026A01@0.344,#057F05@0.406,#139812@0.469,#24B123@0.531,#37C734@0.594,#53DA44@0.656,#71EA54@0.719,#8FF966@0.781,#B0FE85@0.844,#CFFEA9@0.906,#E8FEC8@0.969",
+  "#4A024C@0.031,#830685@0.094,#B60DC7@0.156,#5F09B3@0.219,#172FA8@0.281,#0FA3C3@0.344,#0EB29F@0.406,#0C7A46@0.469,#336F11@0.531,#95AA15@0.594,#CDB416@0.656,#A3500F@0.719,#93160F@0.781,#BD2D2C@0.844,#DF6868@0.906,#EEAFAE@0.969",
+  "#0C0C0C@0.031,#171717@0.094,#282828@0.156,#383838@0.219,#474747@0.281,#585858@0.344,#676767@0.406,#777777@0.469,#888888@0.531,#989898@0.594,#A8A8A8@0.656,#B8B8B8@0.719,#C7C7C7@0.781,#D8D8D8@0.844,#E7E7E7@0.906,#F4F4F4@0.969",
 ];
 export const PALETTE_NAMES = PALETTES.map((p) => p.name);
 
@@ -129,7 +129,7 @@ void main() {
     params: [
       toggle("invert", "Invert", 1),
       ...group("Tones", [range("shadows", "Shadows", -0.5, 0.5, -0.5), range("midtones", "Midtones", -0.5, 0.5, -0.22), range("highlights", "Highlights", -0.5, 0.5, -0.05)]),
-      select("type", "Gradient type", ["Ironbow", "Rainbow", "White hot", "Black hot", "Arctic", "Lava", "Medical", "Night vision", "Predator", "Sepia heat"], 3),
+      select("type", "Gradient type", ["Plasma", "Iron", "Rainbow", "Arctic", "Hot", "Magma", "Viridis", "Night vision", "Banded", "White hot"], 3),
       hero("shift", "Gradient shift", 0, 1, 0),
       hero("repeat", "Gradient repeat", 0.1, 10, 0.7, 0.1),
       toggle("edges", "Show edges", 1),
@@ -164,7 +164,7 @@ void main() {
       toggle("edgeMode", "Edge mode"),
       ...group("Offset", [range("offset", "Offset amount", 0, 10, 0, 1), range("distance", "Distance", 1, 50, 1, 1)]),
       ...group("Outline", [range("outline", "Outline", 0, 10, 0, 1), range("outlineStrength", "Outline strength", 0, 1, 1), select("outlineType", "Outline type", ["Inner", "Outer", "Both"])]),
-      ...group("Blend", [range("blendStrength", "Blend strength", 0, 1, 1), select("blendMode", "Blend mode", ["Normal", "Multiply", "Screen", "Overlay", "Darken", "Lighten", "Replace"], 5), color("color", "Color", "#000000")]),
+      ...group("Blend", [range("blendStrength", "Blend strength", 0, 1, 1), select("blendMode", "Blend mode", ["Normal", "Multiply", "Screen", "Overlay", "Soft light", "Darken", "Lighten"], 5), color("color", "Color", "#000000")]),
     ],
     passes: single(`
 float bw(vec2 uv) {
@@ -189,7 +189,7 @@ void main() {
   vec3 paper = vec3(1.0);
   vec3 t = mix(ink, paper, b);
   int m = int(u_blendMode + 0.5);
-  vec3 o = m == 0 ? mix(c.rgb, t, 1.0 - b) : m == 1 ? c.rgb * t : m == 2 ? blendScreen(c.rgb, 1.0 - t) : m == 3 ? blendOverlay(c.rgb, t) : m == 4 ? min(c.rgb, t) : m == 5 ? max(c.rgb, t) : t;
+  vec3 o = m == 1 ? c.rgb * t : m == 2 ? blendScreen(c.rgb, t) : m == 3 ? blendOverlay(c.rgb, t) : m == 4 ? blendSoftLight(c.rgb, t) : m == 5 ? min(c.rgb, t) : m == 6 ? max(c.rgb, t) : t;
   fragColor = vec4(mix(c.rgb, o, u_blendStrength), c.a);
 }`),
   },

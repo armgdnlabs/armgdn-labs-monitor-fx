@@ -1,5 +1,5 @@
-import { curvesLut, imageTexture } from "../../lib/textures";
-import { TEXTURES, textureUrl } from "./overlay";
+import { curvesLut } from "../../lib/textures";
+import { surfaceTexture, SURFACE_NAMES } from "../../lib/surfaces";
 import { angle, color, curve, group, hero, range, select, single, toggle, type EffectDef } from "../types";
 
 
@@ -339,7 +339,8 @@ vec4 sprites(vec2 uv) {
     vec3 s = texture(uTex0, suv).rgb;
     if (selectW(s, suv) < 0.5) continue;
     // Sprite radius in cells: Min size applies to darks, Max size to lights.
-    float sz = u_size * 0.35 * (0.3 + mix(u_minSize, u_maxSize, luma(s)));
+    // Size is absolute (calibrated at density 60): more density means more, not smaller, sprites.
+    float sz = u_size * 0.9 * mix(u_minSize, u_maxSize, luma(s)) * u_density / 60.0;
     if (u_minSize + u_maxSize <= 0.0 || sz <= 0.01) continue;
     vec2 p = g - cpos;
     p = rot(h.x * TAU * u_rotVar) * p;
@@ -381,37 +382,38 @@ void main() {
     description: "Pushes the image around using a photographed texture as the displacement map.",
     keywords: "warp texture map distort glass liquid",
     params: [
-      select("texture", "Texture", TEXTURES.map((t) => t.name), 0),
-      select("fit", "Fit type", ["Cover", "Tile"]),
+      select("texture", "Texture", SURFACE_NAMES, 28),
+      select("fit", "Fit type", ["Fill", "Stretch", "Tile"]),
       range("texScale", "Texture scale", 1, 5, 1),
       curve("mapCurve", "Map curve", "0,0 1,1", "#F7F2EC"),
-      select("direction", "Direction", ["Slope", "Brightness → angle", "Horizontal", "Vertical"]),
+      select("direction", "Direction", ["XY", "X", "Y"]),
       range("mapBlur", "Map blur", 0, 50, 0, 0.1),
       hero("amount", "Amount", 0, 10, 1),
       toggle("debug", "Debug map"),
     ],
-    aux: (v) => [imageTexture(textureUrl(Number(v.texture) | 0)), curvesLut([String(v.mapCurve), "0,0 1,1", "0,0 1,1", "0,0 1,1"])],
+    aux: (v) => [surfaceTexture(Number(v.texture)), curvesLut([String(v.mapCurve), "0,0 1,1", "0,0 1,1", "0,0 1,1"])],
     passes: single(`
 vec2 tuv(vec2 uv) {
   vec2 p = (uv - 0.5) * vec2(aspect(), 1.0) / u_texScale;
   float ta = uAuxRes0.x / max(uAuxRes0.y, 1.0);
-  float s = u_fit > 0.5 ? 0.6 : max(1.0, aspect() / ta);
+  int fit = int(u_fit + 0.5);
+  if (fit == 1) return p / vec2(aspect(), 1.0) + 0.5;
+  if (fit == 2) return p * uRes.y / (uAuxRes0.y * refScale()) * vec2(1.0 / ta, 1.0) + 0.5;
+  float s = max(1.0, aspect() / ta);
   return p / vec2(s * ta, s) + 0.5;
 }
-float mapAt(vec2 t) {
+vec2 mapAt(vec2 t) {
   float b = u_mapBlur * 0.0006;
-  float l = b > 0.0 ? luma(blur13(uAux0, t, vec2(b)).rgb) : luma(texture(uAux0, t).rgb);
-  return lut1(uAux1, l, 0.0, 4.0).r;
+  vec3 m = b > 0.0 ? blur13(uAux0, t, vec2(b)).rgb : texture(uAux0, t).rgb;
+  // Red pushes along X, green along Y (the same for grey maps); mid-grey stays put.
+  return vec2(lut1(uAux1, m.r, 0.0, 4.0).r, lut1(uAux1, m.g, 0.0, 4.0).r);
 }
 void main() {
-  vec2 t = tuv(vUv);
-  float h = mapAt(t);
-  if (u_debug > 0.5) { fragColor = vec4(vec3(h), 1.0); return; }
-  vec2 e = vec2(3.0) / uAuxRes0;
-  vec2 g = vec2(mapAt(t + vec2(e.x, 0.0)) - mapAt(t - vec2(e.x, 0.0)), mapAt(t + vec2(0.0, e.y)) - mapAt(t - vec2(0.0, e.y)));
+  vec2 h = mapAt(tuv(vUv));
+  if (u_debug > 0.5) { fragColor = vec4(vec3(h.x), 1.0); return; }
   int d = int(u_direction + 0.5);
-  vec2 off = d == 0 ? g * 4.0 : d == 1 ? vec2(cos(h * TAU), sin(h * TAU)) * 0.3 : d == 2 ? vec2(h - 0.5, 0.0) : vec2(0.0, h - 0.5);
-  fragColor = texture(uTex0, vUv + off * u_amount * 0.02);
+  vec2 off = (h - 0.5) * vec2(d == 2 ? 0.0 : 1.0, d == 1 ? 0.0 : 1.0);
+  fragColor = texture(uTex0, vUv + off * u_amount * 0.06 * vec2(1.0 / aspect(), 1.0));
 }`),
   },
   {

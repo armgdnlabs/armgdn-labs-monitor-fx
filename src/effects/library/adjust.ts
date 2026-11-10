@@ -17,26 +17,32 @@ export const adjust: EffectDef[] = [
     description: "Tone curves for the composite and each channel.",
     keywords: "tone curve rgb contrast fade matte",
     params: [
-      select("mode", "Apply mode", ["RGB", "Luminance"]),
-      curve("master", "RGB curve", "0,0 0.25,0.22 0.75,0.8 1,1", "#F7F2EC"),
+      select("mode", "Apply mode", ["Normal", "Color", "Luminosity"]),
+      curve("master", "RGB curve", "0,0 1,1", "#F7F2EC"),
       curve("red", "Red channel", "0,0 1,1", "#D3202A"),
       curve("green", "Green channel", "0,0 1,1", "#5FAF5F"),
       curve("blue", "Blue channel", "0,0 1,1", "#4F7FD8"),
     ],
     aux: (v) => [curvesLut([String(v.master), String(v.red), String(v.green), String(v.blue)])],
     passes: single(`
+vec3 curved(vec3 c) {
+  vec3 o = vec3(lut1(uAux0, c.r, 0.0, 4.0).r, lut1(uAux0, c.g, 0.0, 4.0).r, lut1(uAux0, c.b, 0.0, 4.0).r);
+  return vec3(lut1(uAux0, o.r, 1.0, 4.0).r, lut1(uAux0, o.g, 2.0, 4.0).r, lut1(uAux0, o.b, 3.0, 4.0).r);
+}
 void main() {
   vec4 c = texture(uTex0, vUv);
+  int m = int(u_mode + 0.5);
   vec3 o;
-  if (u_mode > 0.5) {
-    // Luminance mode: the RGB curve changes brightness only, hue and saturation are kept.
+  if (m == 2) {
+    // Luminosity: the curves change brightness only; hue and saturation are kept.
     float l = luma(c.rgb);
-    float nl = lut1(uAux0, l, 0.0, 4.0).r;
+    float nl = luma(curved(vec3(l)));
     o = c.rgb * (nl / max(l, 1e-3));
   } else {
-    o = vec3(lut1(uAux0, c.r, 0.0, 4.0).r, lut1(uAux0, c.g, 0.0, 4.0).r, lut1(uAux0, c.b, 0.0, 4.0).r);
+    o = curved(c.rgb);
+    // Color: the curves shift hue and saturation, the original brightness is kept.
+    if (m == 1) o = o + (luma(c.rgb) - luma(o));
   }
-  o = vec3(lut1(uAux0, o.r, 1.0, 4.0).r, lut1(uAux0, o.g, 2.0, 4.0).r, lut1(uAux0, o.b, 3.0, 4.0).r);
   fragColor = vec4(sat(o), c.a);
 }`),
   },
@@ -54,14 +60,17 @@ void main() {
     ],
     passes: single(`
 vec3 lv(vec3 x) {
-  x = sat((x - u_inBlack) / max(u_inWhite - u_inBlack, 1e-3));
+  // White below black inverts the input range (presets use this to work on a negative).
+  float d = u_inWhite - u_inBlack;
+  x = sat((x - u_inBlack) / (abs(d) < 1e-3 ? (d < 0.0 ? -1e-3 : 1e-3) : d));
   x = pow(x, vec3(1.0 / u_midpoint));
   return mix(vec3(u_outBlack), vec3(u_outWhite), x);
 }
 void main() {
   vec4 c = texture(uTex0, vUv);
   vec3 o;
-  if (u_lumaOnly > 0.5) { float l = luma(c.rgb); o = c.rgb * (lv(vec3(l)).x / max(l, 1e-3)); }
+  // Luma only: move the pixel to its new brightness, keeping hue and saturation.
+  if (u_lumaOnly > 0.5) { float l = luma(c.rgb); o = c.rgb + (lv(vec3(l)).x - l); }
   else o = lv(c.rgb);
   fragColor = vec4(sat(o), c.a);
 }`),
@@ -134,10 +143,10 @@ void main() {
 void main() {
   vec4 c = texture(uTex0, vUv);
   vec3 lab = rgb2oklab(c.rgb);
-  float a = radians(u_hue);
+  float a = -radians(u_hue);
   lab.yz = mat2(cos(a), sin(a), -sin(a), cos(a)) * lab.yz * u_saturation;
   vec3 o = oklab2rgb(lab);
-  if (u_preserve < 0.5) o = hsv2rgb(vec3(fract(rgb2hsv(c.rgb).x + u_hue / 360.0), sat(rgb2hsv(c.rgb).y * u_saturation), rgb2hsv(c.rgb).z));
+  if (u_preserve < 0.5) o = hsv2rgb(vec3(fract(rgb2hsv(c.rgb).x - u_hue / 360.0), sat(rgb2hsv(c.rgb).y * u_saturation), rgb2hsv(c.rgb).z));
   if (u_invert > 0.5) o = 1.0 - o;
   fragColor = vec4(sat(o), c.a);
 }`),
@@ -206,7 +215,8 @@ void main() {
 void main() {
   vec4 c = texture(uTex0, vUv);
   vec3 lin = pow(max(c.rgb, 0.0), vec3(u_gamma));
-  vec3 o = lin * exp2(vec3(u_red, u_green, u_blue) * 1.5);
+  // Per-channel gain in linear light: -1 removes the channel, +1 doubles it.
+  vec3 o = lin * max(1.0 + vec3(u_red, u_green, u_blue), 0.0);
   if (u_keepLuma > 0.5) o *= luma(lin) / max(luma(o), 1e-4);
   fragColor = vec4(sat(pow(max(o, 0.0), vec3(1.0 / u_gamma))), c.a);
 }`),
@@ -236,9 +246,9 @@ void main() {
   vec4 c = texture(uTex0, vUv);
   vec3 lin = pow(max(c.rgb, 0.0), vec3(u_gamma));
   vec3 ref = kelvin(6500.0);
-  // Neutral is 6500 K; a lower setting means the light was warm, so the image is cooled.
-  vec3 ws = ref / max(kelvin(u_shadowK), 0.02);
-  vec3 wh = ref / max(kelvin(u_highlightK), 0.02);
+  // Neutral is 6500 K; the image takes on the colour of light at the set temperature (higher is bluer).
+  vec3 ws = kelvin(u_shadowK) / ref;
+  vec3 wh = kelvin(u_highlightK) / ref;
   ws /= luma(ws); wh /= luma(wh);
   vec3 w = mix(ws, wh, smoothstep(0.05, 0.6, luma(lin)));
   fragColor = vec4(sat(pow(lin * w, vec3(1.0 / u_gamma))), c.a);
@@ -259,7 +269,8 @@ void main() {
 void main() {
   vec4 c = texture(uTex0, vUv);
   vec3 mid = vec3(u_rMid, u_gMid, u_bMid);
-  vec3 o = (mid + c.rgb * (1.0 - mid)) * vec3(u_rGain, u_gGain, u_bGain);
+  // Gain stretches each channel around its midpoint (a pivot), then gamma bends it.
+  vec3 o = (c.rgb - mid) * vec3(u_rGain, u_gGain, u_bGain) + mid;
   o = pow(max(o, 0.0), 1.0 / vec3(u_rGamma, u_gGamma, u_bGamma));
   fragColor = vec4(sat(o), c.a);
 }`),
@@ -314,7 +325,7 @@ void zoneApply(inout vec3 lin, float w, vec3 tint, float ex, float s) {
   if (w <= 0.0) return;
   vec3 t = tintOf(tint);
   // Zone exposure is gentler than global: half a stop per unit, so zones blend without clipping.
-  vec3 g = lin * mix(vec3(1.0), t, w) * exp2(ex * w * 0.5);
+  vec3 g = lin * mix(vec3(1.0), t, w * 0.5) * exp2(ex * w * 0.5);
   float l = luma(g);
   lin = mix(vec3(l), g, mix(1.0, s, w));
 }

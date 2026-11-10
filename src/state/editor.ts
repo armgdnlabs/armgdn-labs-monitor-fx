@@ -206,6 +206,8 @@ export const useEditor = create<EditorState>((set, get) => {
     addLayer: (effectId, values) => {
       const layer = makeLayer(effectId, values);
       if (!layer) return;
+      const extra = getEffect(layer.effectId)?.onParam?.("", layer.values, get().media?.element);
+      if (extra) layer.values = { ...layer.values, ...extra };
       commit((ls) => [...ls, layer], { selectedUid: layer.uid });
     },
 
@@ -260,7 +262,9 @@ export const useEditor = create<EditorState>((set, get) => {
           if (l.uid !== id) return l;
           const track = l.keyframes[key];
           if (track && track.length) return { ...l, keyframes: { ...l.keyframes, [key]: upsertKeyframe(track, time, value) } };
-          return { ...l, values: { ...l.values, [key]: value } };
+          const values = { ...l.values, [key]: value };
+          const extra = getEffect(l.effectId)?.onParam?.(key, values, get().media?.element);
+          return { ...l, values: extra ? { ...values, ...extra } : values };
         }),
         future: [],
       });

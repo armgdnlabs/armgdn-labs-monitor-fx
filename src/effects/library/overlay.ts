@@ -1,28 +1,9 @@
-import { glyphAtlas, gradientLut, imageTexture, textTexture, TEXT_FONTS } from "../../lib/textures";
-import { angle, color, gradient, group, hero, image, range, select, single, text, toggle, type EffectDef } from "../types";
+import { curvesLut, glyphAtlas, gradientLut, imageTexture, textTexture, TEXT_FONTS } from "../../lib/textures";
+import { surfaceTexture, SURFACE_NAMES } from "../../lib/surfaces";
+import { angle, color, curve, gradient, group, hero, image, range, select, single, text, toggle, type EffectDef } from "../types";
 import { BLEND_MODES } from "../../engine/glsl";
 
-/**
- * Photographed surfaces for the Texture effect (Unsplash, free licence; credited in the README).
- * Image ids are hot-linked from images.unsplash.com as the Unsplash guidelines require.
- */
-export const TEXTURES = [
-  { name: "Crumpled paper", id: "1776278515793-c4d7fbf04369", by: "sigmund" },
-  { name: "Crumpled kraft", id: "1603484477859-abe6a73f9366", by: "sjobjio" },
-  { name: "Folded paper", id: "1691415780572-de7c176a3b18", by: "bartco86" },
-  { name: "Lined paper", id: "1783700697126-8055c3c15baa", by: "umuthasanoglu" },
-  { name: "Thin paper", id: "1737276746515-19ea864a6b80", by: "sanches812" },
-  { name: "Tracing paper", id: "1707134657472-51902d2854a4", by: "heathergreengreen" },
-  { name: "Cardboard", id: "1776278515671-fe179ba9cfd3", by: "sigmund" },
-  { name: "Paper towel", id: "1771231591303-8e0daa821513", by: "msaimakin" },
-  { name: "Cracked paint", id: "1475965894430-b05c9d13568a", by: "creativejunkie" },
-  { name: "Broken glass", id: "1767044202331-c3a0a7cbdf43", by: "leftfield_corn" },
-  { name: "Dust", id: "1768956463493-a8118a41b629", by: "linusbelanger" },
-  { name: "Linen", id: "1764437835706-ba9d63250bd2", by: "loganvoss" },
-];
-export const textureUrl = (i: number) => `https://images.unsplash.com/photo-${(TEXTURES[i] ?? TEXTURES[0]).id}?w=2000&q=80&auto=format`;
-
-const DEFAULT_MIX_IMAGE = "https://images.unsplash.com/photo-1547070451-ce386c65160a?w=1600&q=80&auto=format";
+const LM_BLENDS = ["Normal", "Multiply", "Screen", "Overlay", "Soft light", "Hard light", "Color dodge", "Hard mix"];
 
 export const overlay: EffectDef[] = [
   {
@@ -84,58 +65,6 @@ void main() {
   }
   o = mix(o, blendTo(o, u_fill, m), a * u_opacity);
   fragColor = vec4(sat(o), c.a);
-}`),
-  },
-  {
-    id: "paper-texture",
-    name: "Layer mix",
-    category: "Overlay",
-    description: "Real photographed surfaces (Unsplash) laid over the image: crumpled, folded, lined, thin and tracing paper, cardboard, paper towel, cracked paint, broken glass, dust and linen. The texture is neutralised so it adds relief and grain without shifting exposure.",
-    keywords: "paper crumpled folded tracing overlay texture surface cracks glass canvas towel linen dust",
-    preview: "editorial:12",
-    params: [
-      select("kind", "Texture", TEXTURES.map((t) => t.name)),
-      hero("opacity", "Opacity", 0, 1, 0.8),
-      hero("scale", "Scale", 0.5, 3, 1),
-      range("rotation", "Rotation", -180, 180, 0, 1, { unit: "°" }),
-      select("blend", "Blend", ["Overlay", "Multiply", "Screen", "Soft light", "Light relief"]),
-      range("contrast", "Texture contrast", 0, 3, 1.8),
-      range("displace", "Displace image", 0, 1, 0.2),
-      range("color", "Texture colour", 0, 1, 0),
-    ],
-    aux: (v) => [imageTexture(textureUrl(Number(v.kind) | 0))],
-    passes: single(`
-vec2 texUv(vec2 uv) {
-  // Cover-fit the photo to the frame, then scale and rotate around the centre.
-  vec2 p = (uv - 0.5) * vec2(aspect(), 1.0);
-  p = rot(radians(u_rotation)) * p / u_scale;
-  float ta = uAuxRes0.x / max(uAuxRes0.y, 1.0);
-  // Height-based cover: the texture always fills the frame, whatever either aspect is.
-  float s = max(1.0, aspect() / ta);
-  return p / vec2(s * ta, s) + 0.5;
-}
-float tl(vec2 uv) { return luma(texture(uAux0, uv).rgb); }
-void main() {
-  vec2 tuv = texUv(vUv);
-  vec3 tex = texture(uAux0, tuv).rgb;
-  // Local mean of the texture (wide 9-tap) so the overlay is centred on mid-grey.
-  float m = 0.0;
-  for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) m += tl(tuv + vec2(float(i), float(j)) * 0.04);
-  m /= 9.0;
-  float d = (luma(tex) - m) * u_contrast;
-  // Relief from the photo itself: its luminance gradient lights the surface and nudges the image.
-  vec2 e = 4.0 / uAuxRes0;
-  vec2 grad = vec2(tl(tuv + vec2(e.x, 0.0)) - tl(tuv - vec2(e.x, 0.0)), tl(tuv + vec2(0.0, e.y)) - tl(tuv - vec2(0.0, e.y)));
-  vec4 c = texture(uTex0, vUv + grad * 0.02 * u_displace);
-  vec3 t3 = mix(vec3(0.5 + d), 0.5 + (tex - m) * u_contrast, u_color);
-  int b = int(u_blend + 0.5);
-  vec3 o;
-  if (b == 0) o = blendOverlay(c.rgb, sat(t3));
-  else if (b == 1) o = c.rgb * sat(mix(vec3(1.0 + min(d, 0.0) * 2.0), tex / max(m, 0.05), u_color));
-  else if (b == 2) o = blendScreen(c.rgb, sat(vec3(max(d, 0.0) * 2.0)));
-  else if (b == 3) o = blendSoftLight(c.rgb, sat(t3));
-  else o = c.rgb * (1.0 + dot(grad, vec2(-0.7, 0.7)) * 9.0 * u_contrast + d * 0.6);
-  fragColor = vec4(mix(c.rgb, sat(o), u_opacity), c.a);
 }`),
   },
   {
@@ -321,48 +250,83 @@ void main() {
     id: "layer-mix",
     name: "Layer mix",
     category: "Overlay",
-    description: "Blend a second image (Unsplash, URL or upload) over the stack with any blend mode.",
-    keywords: "double exposure blend overlay texture image composite",
-    preview: "smoke:2",
+    description: "Lay a texture or image over the stack with a blend mode, tone curve, blend-if ranges, chroma key and matte.",
+    keywords: "texture paper overlay blend image composite double exposure crumpled folded grunge dust glass key",
+    preview: "editorial:12",
     params: [
-      image("image", "Image", DEFAULT_MIX_IMAGE),
-      select("mode", "Blend", [...BLEND_MODES], 2),
-      hero("amount", "Amount", 0, 1, 0.7),
-      range("scale", "Scale", 0.2, 4, 1),
-      range("x", "Offset X", -1, 1, 0),
-      range("y", "Offset Y", -1, 1, 0),
-      select("fit", "Fit", ["Cover", "Tile"]),
-      toggle("lumaMask", "Mask by brightness"),
+      ...group("Main", [
+        select("texture", "Texture", SURFACE_NAMES, 8),
+        image("custom", "Custom image", ""),
+        select("fit", "Fit type", ["Fill", "Stretch", "Tile"]),
+        select("blend", "Blend mode", LM_BLENDS, 1),
+        hero("opacity", "Opacity", 0, 1, 1),
+        hero("scale", "Scale", 0.1, 5, 1),
+        range("rotation", "Rotation", -180, 180, 0, 1, { unit: "°" }),
+      ]),
+      ...group("Edit", [curve("curve", "Texture curve", "0,0 1,1"), select("channel", "Curve channel", ["Gray", "Red", "Green", "Blue"])]),
+      ...group("Blend if", [
+        range("thisLo", "This layer from", 0, 1, 0), range("thisHi", "This layer to", 0, 1, 1),
+        range("underLo", "Underlying from", 0, 1, 0), range("underHi", "Underlying to", 0, 1, 1),
+      ]),
+      ...group("Key", [toggle("key", "Key"), color("keyColor", "Key color", "#00C745"), range("tolerance", "Tolerance", 0, 1, 0.05), range("softness", "Softness", 0, 0.5, 0.1), range("despill", "Despill", 0, 1, 1)]),
+      ...group("Matte", [select("matte", "Matte", ["None", "Alpha", "Luma"]), toggle("invertMatte", "Invert matte")]),
     ],
-    aux: (v) => [imageTexture(String(v.image))],
+    aux: (v) => [String(v.custom || "") ? imageTexture(String(v.custom)) : surfaceTexture(Number(v.texture)), curvesLut([String(v.curve)])],
     passes: single(`
-vec3 setLum(vec3 c, float l) { return c + (l - luma(c)); }
-vec3 blendAll(vec3 b, vec3 s, int m) {
+vec2 texUv(vec2 uv) {
+  vec2 p = (uv - 0.5) * vec2(aspect(), 1.0);
+  p = rot(radians(u_rotation)) * p / u_scale;
+  float ta = uAuxRes0.x / max(uAuxRes0.y, 1.0);
+  int fit = int(u_fit + 0.5);
+  if (fit == 1) return p / vec2(aspect(), 1.0) + 0.5;
+  if (fit == 2) return p * uRes.y / (uAuxRes0.y * refScale()) * vec2(1.0 / ta, 1.0) + 0.5;
+  float s = max(1.0, aspect() / ta);
+  return p / vec2(s * ta, s) + 0.5;
+}
+vec3 mixMode(vec3 b, vec3 s, int m) {
   if (m == 1) return b * s;
   if (m == 2) return blendScreen(b, s);
   if (m == 3) return blendOverlay(b, s);
   if (m == 4) return blendSoftLight(b, s);
-  if (m == 5) return min(b + s, 1.0);
-  if (m == 6) return abs(b - s);
-  if (m == 7) return min(b, s);
-  if (m == 8) return max(b, s);
-  if (m == 9) return sat(setLum(s, luma(b)));
-  if (m == 10) return sat(setLum(b, luma(s)));
-  if (m == 11) return b / max(1.0 - s, 1e-3);
-  if (m == 12) return 1.0 - (1.0 - b) / max(s, 1e-3);
-  if (m == 13) return b + s - 2.0 * b * s;
-  if (m == 14) { vec3 hb = rgb2hsv(b); vec3 hs = rgb2hsv(s); return hsv2rgb(vec3(hs.x, hb.y, hb.z)); }
+  if (m == 5) return blendOverlay(s, b);
+  if (m == 6) return b / max(1.0 - s, 1e-3);
+  if (m == 7) return step(1.0, b + s);
   return s;
+}
+float band(float x, float lo, float hi) {
+  if (lo <= 0.001 && hi >= 0.999) return 1.0;
+  return smoothstep(lo - 0.04, lo + 0.04, x) * (1.0 - smoothstep(hi - 0.04, hi + 0.04, x));
 }
 void main() {
   vec4 c = texture(uTex0, vUv);
-  float ia = uAuxRes0.x / max(uAuxRes0.y, 1.0);
-  vec2 p = (vUv - 0.5 - vec2(u_x, u_y) * 0.5) / u_scale;
-  if (u_fit < 0.5) { if (ia > aspect()) p.x *= aspect() / ia; else p.y *= ia / aspect(); }
-  else p *= vec2(aspect() / ia, 1.0) * 2.0;
-  vec3 s = texture(uAux0, p + 0.5).rgb;
-  float k = u_amount * (u_lumaMask > 0.5 ? luma(s) : 1.0);
-  fragColor = vec4(mix(c.rgb, sat(blendAll(c.rgb, s, int(u_mode + 0.5))), k), c.a);
+  vec2 tuv = texUv(vUv);
+  bool outside = u_fit < 1.5 && (tuv.x < 0.0 || tuv.x > 1.0 || tuv.y < 0.0 || tuv.y > 1.0);
+  vec4 t = texture(uAux0, tuv);
+  // Tone curve on the texture: all channels (Gray) or one of them.
+  int ch = int(u_channel + 0.5);
+  vec3 tc = t.rgb;
+  if (ch == 0) tc = vec3(lut1(uAux1, tc.r, 0.0, 1.0).r, lut1(uAux1, tc.g, 0.0, 1.0).r, lut1(uAux1, tc.b, 0.0, 1.0).r);
+  else if (ch == 1) tc.r = lut1(uAux1, tc.r, 0.0, 1.0).r;
+  else if (ch == 2) tc.g = lut1(uAux1, tc.g, 0.0, 1.0).r;
+  else tc.b = lut1(uAux1, tc.b, 0.0, 1.0).r;
+  float a = t.a;
+  if (u_key > 0.5) {
+    vec3 kd = rgb2oklab(tc) - rgb2oklab(u_keyColor);
+    float d = length(kd.yz) + abs(kd.x) * 0.25;
+    float k = smoothstep(u_tolerance * 0.5, u_tolerance * 0.5 + u_softness * 0.5 + 1e-3, d);
+    a *= k;
+    // Despill: pull the key hue out of what is left.
+    vec3 kn = normalize(u_keyColor + 1e-3);
+    float spill = max(0.0, dot(tc, kn) - luma(tc)) * u_despill;
+    tc -= kn * spill * (1.0 - k);
+  }
+  int mt = int(u_matte + 0.5);
+  float matte = mt == 1 ? t.a : mt == 2 ? luma(tc) : 1.0;
+  if (u_invertMatte > 0.5 && mt > 0) matte = 1.0 - matte;
+  float w = u_opacity * a * matte * band(luma(tc), u_thisLo, u_thisHi) * band(luma(c.rgb), u_underLo, u_underHi);
+  if (outside) w = 0.0;
+  vec3 o = mixMode(c.rgb, sat(tc), int(u_blend + 0.5));
+  fragColor = vec4(mix(c.rgb, sat(o), w), c.a);
 }`),
   },
   {

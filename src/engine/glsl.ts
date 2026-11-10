@@ -317,6 +317,7 @@ vec3 blendMode(vec3 b, vec3 s, int m) {
   if (m == 12) return 1.0 - (1.0 - b) / max(s, 1e-3);
   if (m == 13) return b + s - 2.0 * b * s;
   if (m == 14) { vec3 hb = rgb2hsv(b); vec3 hs = rgb2hsv(s); return hsv2rgb(vec3(hs.x, hb.y, hb.z)); }
+  if (m == 15) return max(b - s, 0.0);
   return s;
 }
 void main() {
@@ -336,5 +337,5 @@ void main() {
 
 export const BLEND_MODES = [
   "Normal", "Multiply", "Screen", "Overlay", "Soft light", "Add", "Difference", "Darken", "Lighten",
-  "Color", "Luminosity", "Color dodge", "Color burn", "Exclusion", "Hue",
+  "Color", "Luminosity", "Color dodge", "Color burn", "Exclusion", "Hue", "Subtract",
 ] as const;

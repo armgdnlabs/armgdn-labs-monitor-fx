@@ -1,5 +1,6 @@
 import type { AuxSpec } from "../effects/types";
 import { hexToRgb } from "./color";
+import { onSurfaceLoad, waitForSurfaces } from "./surfaces";
 
 /* ── Curves ──────────────────────────────────────────────────────────────── */
 
@@ -242,7 +243,11 @@ export function textTexture(textValue: string, fontIndex: number, weight: number
 
 const images = new Map<string, HTMLImageElement>();
 const listeners = new Set<() => void>();
-export const onAuxImageLoad = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
+export const onAuxImageLoad = (fn: () => void) => {
+  listeners.add(fn);
+  const off = onSurfaceLoad(fn);
+  return () => { listeners.delete(fn); off(); };
+};
 
 export function imageTexture(url: string): AuxSpec {
   let img = images.get(url);
@@ -265,4 +270,5 @@ export function imageTexture(url: string): AuxSpec {
 /** Wait for the images an aux spec list depends on (used before exporting). */
 export async function waitForAuxImages(): Promise<void> {
   await Promise.all([...images.values()].map((i) => (i.complete ? null : i.decode().catch(() => null))));
+  await waitForSurfaces();
 }

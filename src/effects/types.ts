@@ -60,7 +60,12 @@ export interface ImageParam extends BaseParam {
   /** Image URL (https, blob: or data:). */
   default: string;
 }
-export type ParamDef = RangeParam | SelectParam | ToggleParam | ColorParam | TextParam | CurveParam | GradientParam | ImageParam;
+/** Up to 18 editable colour swatches, stored as "#rrggbb #rrggbb …". */
+export interface PaletteParam extends BaseParam {
+  type: "palette";
+  default: string;
+}
+export type ParamDef = RangeParam | SelectParam | ToggleParam | ColorParam | TextParam | CurveParam | GradientParam | ImageParam | PaletteParam;
 
 export type UniformValue = number | readonly number[];
 
@@ -114,6 +119,8 @@ export interface EffectDef {
   handles?: { x: string; y: string; label?: string }[];
   /** Photo key (see data/photos.ts) used for the library preview. */
   preview?: string;
+  /** Values to derive when a param changes (or on add, with key ""), e.g. a palette filling its swatches. */
+  onParam?: (key: string, values: ParamValues, source?: TexImageSource | null) => ParamValues | null;
 }
 
 export const single = (frag: string, extra: Partial<PassDef> = {}): PassDef[] => [{ id: "main", frag, inputs: ["input"], ...extra }];
@@ -133,6 +140,7 @@ export const color = (key: string, label: string, def: string, group?: string): 
 export const text = (key: string, label: string, def: string, extra: Partial<TextParam> = {}): TextParam => ({ key, label, type: "text", default: def, ...extra });
 export const curve = (key: string, label: string, def = "0,0 1,1", tint?: string): CurveParam => ({ key, label, type: "curve", default: def, tint });
 export const image = (key: string, label: string, def: string): ImageParam => ({ key, label, type: "image", default: def });
+export const palette = (key: string, label: string, def = ""): PaletteParam => ({ key, label, type: "palette", default: def });
 export const gradient = (key: string, label: string, def: string): GradientParam => ({ key, label, type: "gradient", default: def });
 /** Puts params into an inspector group. */
 export const group = <T extends ParamDef>(name: string, params: T[]): T[] => params.map((p) => ({ ...p, group: name }));

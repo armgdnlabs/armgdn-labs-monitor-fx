@@ -1,6 +1,7 @@
 import { glyphAtlas, paletteTex, sortByDensity } from "../../lib/textures";
-import { color, group, hero, range, select, single, text, toggle, type EffectDef, type ParamValues } from "../types";
-import { PALETTES, PALETTE_NAMES } from "./color";
+import { color, group, hero, palette, range, select, single, text, toggle, type EffectDef, type ParamValues } from "../types";
+import { imagePalette } from "../../lib/imagePalette";
+import { PALETTES } from "./color";
 
 export const CHARSETS = [
   { name: "Standard", chars: " .:-=+*#%@" },
@@ -20,11 +21,37 @@ function asciiRamp(v: ParamValues): string {
 }
 
 /** Evenly spaced subset of a palette, so "colour count" always spans dark to light. */
-function paletteSubset(colors: string[], count: number): string[] {
-  const n = Math.max(2, Math.min(colors.length, Math.round(count)));
-  if (n >= colors.length) return colors;
-  return Array.from({ length: n }, (_, i) => colors[Math.round((i / (n - 1)) * (colors.length - 1))]);
+/** Pads a palette to 18 swatches with in-between colours, keeping the originals first (colour count takes the first N). */
+function to18(colors: string[]): string[] {
+  const out = colors.slice(0, 18);
+  const rgb = (h: string) => [1, 3, 5].map((o) => parseInt(h.slice(o, o + 2), 16));
+  const hex = (c: number[]) => "#" + c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("").toUpperCase();
+  for (let step = 0.5; out.length < 18; step /= 2) {
+    const base = out.slice();
+    for (let i = 0; i < base.length - 1 && out.length < 18; i++) {
+      const a = rgb(base[i]), b = rgb(base[i + 1]);
+      out.push(hex(a.map((v, k) => v + (b[k] - v) * step)));
+    }
+    if (base.length < 2) break;
+  }
+  return out;
 }
+const DITHER_PALETTES: { name: string; colors: string[] }[] = [
+  { name: "From image", colors: [] },
+  { name: "Fantasy 16", colors: to18(["#000000", "#FFF1E8", "#FF004D", "#29ADFF", "#FFEC27", "#7E2553", "#00E436", "#1D2B53", "#FFA300", "#83769C", "#AB5236", "#FF77A8", "#008751", "#C2C3C7", "#5F574F", "#FFCCAA"]) },
+  { name: "Home micro", colors: to18(["#000000", "#FFFFFF", "#880000", "#AAFFEE", "#CC44CC", "#00CC55", "#0000AA", "#EEEE77", "#DD8855", "#664400", "#FF7777", "#333333", "#777777", "#AAFF66", "#0088FF", "#BBBBBB"]) },
+  { name: "Teletext", colors: to18(["#000000", "#FFFFFF", "#FF0000", "#0000FF", "#FFFF00", "#00FF00", "#FF00FF", "#00FFFF"]) },
+  { name: "Riso stock", colors: to18(["#1A1A1A", "#F2EDE4", "#FF48B0", "#0078BF", "#FFE900", "#00A95C", "#FF6C2F", "#765BA7", "#F15060", "#5EC8E5"]) },
+  { name: "Ocean", colors: to18(["#03111F", "#F4FBFF", "#29A1FF", "#0B3A66", "#B8E4FF", "#3C9A76", "#BBB189", "#5C7C50", "#2270A2"]) },
+  { name: "Darkroom", colors: to18(["#1D1919", "#F3EBE3", "#683737", "#B39076", "#3F0C03", "#9E8C72", "#7D3A0E", "#F0C592", "#493826"]) },
+  { name: "Bloom", colors: to18(["#2C1A5E", "#FAA5CC", "#A101A9", "#A9A0F3", "#69BA2D", "#C5967B", "#26C6C6", "#BD1870", "#EAF0C8"]) },
+  { name: "Grey 18", colors: Array.from({ length: 18 }, (_, i) => { const v = Math.round((i / 17) * 255).toString(16).padStart(2, "0").toUpperCase(); return `#${v}${v}${v}`; }) },
+  { name: "Sunset", colors: to18(["#2B2937", "#F8D5B9", "#F96226", "#82DED0", "#96192D", "#E7BC66", "#7812D6", "#DB516A", "#738199"]) },
+  { name: "Mint", colors: to18(["#24243D", "#EAEACF", "#054B9C", "#A0D5C2", "#D12B4C", "#52A297", "#CB9045", "#FB7198", "#107679"]) },
+  { name: "Field", colors: to18(["#021E70", "#C8F6E3", "#BC212A", "#50DCA1", "#7C3A65", "#B58309", "#52CAEB", "#94AC7B", "#1EB149"]) },
+  { name: "Ultraviolet", colors: to18(["#36104A", "#F0F2A7", "#A201EF", "#19248D", "#D9EB89", "#96C6C5", "#9B1D2F", "#6F6CF1", "#3D967F"]) },
+];
+
 
 /**
  * Shared NTSC helpers. The composite signal of an RGB colour at sample n on line `row` is
@@ -503,7 +530,7 @@ void main() {
     keywords: "macintosh 1984 bitmap pattern fill monochrome 1-bit",
     preview: "botanic:3",
     params: [
-      hero("width", "Bitmap width", 32, 1024, 342, 1),
+      hero("width", "Bitmap width", 32, 4096, 342, 1),
       hero("threshold", "Threshold", 0, 1, 0.45, 0.001),
       hero("contrast", "Contrast", 0.1, 4, 2.2),
       select("fill", "Fills", ["Patterns", "Ordered dither", "Threshold"]),
@@ -632,16 +659,28 @@ void main() {
     keywords: "bayer ordered 1-bit noise palette pixel retro",
     preview: "nature:7",
     params: [
-      select("pattern", "Pattern", ["Bayer 2×2", "Bayer 4×4", "Bayer 8×8", "Bayer 16×16", "Clustered 4×4", "Clustered 8×8", "Blue noise", "White noise", "Interleaved gradient", "Horizontal lines", "Vertical lines", "Diagonal lines", "Crosshatch", "Halftone dots", "Diamonds", "Checks", "Bricks", "Waves", "Spiral", "Scales", "Weave", "Ripple", "Stipple"], 2),
-      select("palette", "Palette", PALETTE_NAMES, 0),
-      hero("colors", "Colour count", 2, 18, 4, 1),
-      hero("strength", "Dither strength", 0, 2, 1),
-      hero("pixel", "Pixel step", 1, 8, 2, 1),
-      select("distance", "Colour matching", ["RGB", "Perceptual", "Luma"], 1),
-      range("gamma", "Gamma", 0.5, 5, 1.2, 0.1),
-      range("contrast", "Contrast", 0.3, 3, 1.1),
+      select("pattern", "Pattern", ["Bayer 2×2", "Bayer 4×4", "Bayer 8×8", "Bayer 16×16", "Clustered 4×4", "Clustered 8×8", "Blue noise", "White noise", "Interleaved gradient", "Horizontal lines", "Vertical lines", "Diagonal lines", "Crosshatch", "Halftone dots", "Diamonds", "Checks", "Bricks", "Waves", "Spiral", "Scales", "Weave", "Ripple", "Stipple"], 0),
+      select("palette", "Color palette", DITHER_PALETTES.map((p) => p.name), 0),
+      palette("swatches", "Palette", ""),
+      hero("colors", "Color count", 2, 18, 18, 1),
+      select("distance", "Distance mode", ["RGB", "Perceptual", "Luma"], 2),
+      hero("strength", "Dither strength", 0, 2, 2, 0.1),
+      range("gamma", "Gamma", 0.5, 5, 1.6, 0.1),
+      range("pixel", "Pixel step", 1, 4, 2, 1),
     ],
-    aux: (v) => [paletteTex(paletteSubset(PALETTES[Number(v.palette) | 0]?.colors ?? PALETTES[0].colors, Number(v.colors) || 4))],
+    onParam: (key, v, source) => {
+      if (key !== "" && key !== "palette") return null;
+      if (key === "" && String(v.swatches || "")) return null;
+      const i = Number(v.palette) | 0;
+      const cols = i === 0 ? imagePalette(source, 18) : DITHER_PALETTES[i]?.colors ?? [];
+      return cols.length ? { swatches: cols.join(" ") } : null;
+    },
+    aux: (v) => {
+      const sw = String(v.swatches || "").split(/\s+/).filter((c) => /^#[0-9a-f]{6}$/i.test(c));
+      const fixed = DITHER_PALETTES[Number(v.palette) | 0]?.colors ?? [];
+      const cols = sw.length ? sw : fixed.length ? fixed : DITHER_PALETTES[8].colors;
+      return [paletteTex(cols.slice(0, Math.max(2, Math.min(18, Number(v.colors) | 0 || 18))))];
+    },
     passes: single(`
 float clustered(vec2 c, float n) { vec2 f = fract(c / n) - 0.5; return sat(length(f) * 1.41); }
 float thresholdAt(vec2 c, int p) {
@@ -673,7 +712,7 @@ void main() {
   float ps = max(1.0, u_pixel * refScale());
   vec2 cell = floor(vUv * uRes / ps);
   vec3 c = texture(uTex0, (cell + 0.5) * ps / uRes).rgb;
-  c = pow(sat((c - 0.5) * u_contrast + 0.5), vec3(u_gamma));
+  c = pow(sat(c), vec3(1.0 / u_gamma));
   float np = uAuxRes0.x;
   float t = (thresholdAt(cell, int(u_pattern + 0.5)) - 0.5) * u_strength / max(np - 1.0, 1.0);
   int dm = int(u_distance + 0.5);

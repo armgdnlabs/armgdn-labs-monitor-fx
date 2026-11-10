@@ -1,5 +1,4 @@
-import { imageTexture } from "../../lib/textures";
-import { TEXTURES, textureUrl } from "./overlay";
+import { surfaceTexture, SURFACE_NAMES } from "../../lib/surfaces";
 import { BLUR_FRAG } from "../../engine/glsl";
 import { group, hero, range, select, single, toggle, type EffectDef } from "../types";
 
@@ -376,19 +375,22 @@ void main() {
     description: "Blur shaped by a texture: the texture pushes samples, like looking through frosted or wet glass.",
     keywords: "frosted glass smudge texture distort blur",
     params: [
-      select("texture", "Texture", TEXTURES.map((t) => t.name), 9),
-      select("fit", "Fit type", ["Cover", "Tile"]),
+      select("texture", "Texture", SURFACE_NAMES, 20),
+      select("fit", "Fit type", ["Fill", "Stretch", "Tile"]),
       range("texScale", "Texture scale", 1, 5, 1),
       hero("strength", "Blur strength", 0, 0.5, 0.5, 0.001),
       hero("boost", "Highlight boost", 0, 1, 0),
       hero("influence", "Texture influence", 0, 1, 1, 0.1),
     ],
-    aux: (v) => [imageTexture(textureUrl(Number(v.texture) | 0))],
+    aux: (v) => [surfaceTexture(Number(v.texture))],
     passes: single(`
 vec2 tuv(vec2 uv) {
   vec2 p = (uv - 0.5) * vec2(aspect(), 1.0) / u_texScale;
   float ta = uAuxRes0.x / max(uAuxRes0.y, 1.0);
-  float s = u_fit > 0.5 ? 0.6 : max(1.0, aspect() / ta);
+  int fit = int(u_fit + 0.5);
+  if (fit == 1) return p / vec2(aspect(), 1.0) + 0.5;
+  if (fit == 2) return p * uRes.y / (uAuxRes0.y * refScale()) * vec2(1.0 / ta, 1.0) + 0.5;
+  float s = max(1.0, aspect() / ta);
   return p / vec2(s * ta, s) + 0.5;
 }
 void main() {
