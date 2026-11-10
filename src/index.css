@@ -4,19 +4,21 @@
 
 /* ── Tokens (DESIGN.md §4). Channels are space-separated so Tailwind can apply alpha. ── */
 :root {
-  --void: 10 10 10; --ink: 30 30 30; --ash-900: 38 37 35; --ash-700: 74 72 69;
+  --void: 8 8 8; --ink: 30 30 30; --ash-900: 38 37 35; --ash-700: 74 72 69;
   --ash-500: 133 130 125; --ash-300: 189 185 178; --bone-200: 237 231 223; --bone: 247 242 236;
   --signal: 211 32 42;
 
   --bg: var(--void); --bg-raised: var(--ash-900); --fg: var(--bone);
   --fg-2: var(--ash-300); --fg-muted: var(--ash-500); --border: var(--ash-700);
   --panel: 14 14 13;
+  --glass: 247 242 236; --glass-a: 0.035; --edge-a: 0.09;
   color-scheme: dark;
 }
 [data-theme="light"] {
   --bg: var(--bone); --bg-raised: var(--bone-200); --fg: var(--void);
   --fg-2: var(--ash-700); --fg-muted: var(--ash-500); --border: var(--ash-300);
   --panel: 242 237 230;
+  --glass: 10 10 10; --glass-a: 0.03; --edge-a: 0.1;
   color-scheme: light;
 }
 /* Screen palette for the canvas frame and readouts follows the theme: dark = mono, light = analog. */
@@ -31,7 +33,17 @@
     font-variant-numeric: tabular-nums;
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
+    background-image: radial-gradient(60% 50% at 12% 0%, rgb(var(--signal) / 0.07), transparent 70%), radial-gradient(50% 50% at 100% 100%, rgb(var(--fg) / 0.03), transparent 70%);
   }
+  /* Analog grain over everything, as on the ARMGDN site. */
+  body::after {
+    content: ""; position: fixed; inset: -50%; z-index: 9999; pointer-events: none; opacity: 0.06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grain 0.6s steps(6) infinite;
+  }
+  [data-theme="light"] body::after { opacity: 0.05; mix-blend-mode: multiply; }
+  @keyframes grain { 0% { transform: translate(0, 0); } 20% { transform: translate(-4%, 3%); } 40% { transform: translate(3%, -5%); } 60% { transform: translate(-6%, -2%); } 80% { transform: translate(5%, 4%); } 100% { transform: translate(0, 0); } }
+  @media (prefers-reduced-motion: reduce) { body::after { animation: none; } }
   ::selection { background: rgb(var(--signal) / 0.5); color: rgb(var(--bone)); }
   * { scrollbar-width: thin; scrollbar-color: rgb(var(--border)) transparent; }
   *::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -43,7 +55,9 @@
 
 @layer components {
   /* Hairline boxes, not cards: no radius, no shadow, no blur. */
-  .panel { @apply border border-line; background: rgb(var(--panel)); }
+  .panel { @apply rounded-xl; background: rgb(var(--glass) / var(--glass-a)); box-shadow: inset 0 0 0 1px rgb(var(--glass) / var(--edge-a)); backdrop-filter: blur(20px); }
+  /* Floating editor panels, like the site's glass cards. */
+  .glass-panel { @apply rounded-2xl overflow-hidden; background: rgb(var(--glass) / var(--glass-a)); box-shadow: inset 0 0 0 1px rgb(var(--glass) / var(--edge-a)), inset 0 1px 0 rgb(var(--glass) / 0.06); backdrop-filter: blur(24px); }
   .hair-b { @apply border-b border-line; }
   .hair-t { @apply border-t border-line; }
 
@@ -55,31 +69,33 @@
 
   /* Buttons: rectangles, mono uppercase, hover inverts, 1px press nudge, ≤80ms. */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 h-8 px-3 border border-line text-[11px] uppercase tracking-[0.08em]
-      text-fg bg-transparent transition-colors duration-80 ease-linear disabled:opacity-35 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 h-8 px-3.5 rounded-full font-grot font-semibold text-[12px]
+      text-fg disabled:opacity-35 disabled:pointer-events-none;
+    background: rgb(var(--glass) / 0.05); box-shadow: inset 0 0 0 1px rgb(var(--glass) / 0.14);
+    transition: background 0.2s, color 0.2s;
   }
-  .btn:hover { @apply bg-fg text-bg border-fg; }
+  .btn:hover { @apply bg-fg text-bg; box-shadow: none; }
   .btn:active { transform: translateY(1px); }
-  .btn-primary { @apply btn bg-fg text-bg border-fg; }
-  .btn-primary:hover { @apply bg-transparent text-fg; }
-  .btn-signal { @apply btn border-signal text-signal; }
-  .btn-signal:hover { @apply bg-signal text-bone border-signal; }
+  .btn-primary { @apply btn bg-fg text-bg; box-shadow: none; }
+  .btn-primary:hover { @apply bg-signal text-bone; }
+  .btn-signal { @apply btn bg-signal text-bone; box-shadow: none; }
+  .btn-signal:hover { @apply bg-fg text-bg; }
   .icon-btn {
-    @apply inline-flex items-center justify-center w-8 h-8 text-fg-2 transition-colors duration-80 ease-linear
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-full text-fg-2 transition-colors duration-80 ease-linear
       hover:bg-fg hover:text-bg disabled:opacity-30 disabled:pointer-events-none;
   }
   .icon-btn:active { transform: translateY(1px); }
   .icon-btn.on { @apply bg-fg text-bg; }
 
-  .tab { @apply h-8 px-2 text-[11px] uppercase tracking-[0.08em] text-fg-muted hover:text-fg whitespace-nowrap; }
-  .tab.on { @apply text-fg; box-shadow: inset 0 -1px 0 rgb(var(--fg)); }
+  .tab { @apply h-7 px-3 rounded-full font-grot font-semibold text-[12px] text-fg-muted hover:text-fg whitespace-nowrap transition-colors; }
+  .tab.on { @apply bg-fg text-bg; }
 
   .field {
-    @apply w-full h-8 border border-line bg-transparent px-2 text-[12px] text-fg placeholder:text-fg-muted outline-none
-      focus:border-fg;
+    @apply w-full h-8 rounded-lg px-2.5 text-[12px] text-fg placeholder:text-fg-muted outline-none;
+    background: rgb(var(--glass) / 0.05); box-shadow: inset 0 0 0 1px rgb(var(--glass) / 0.12);
   }
-  .menu { @apply panel min-w-[200px] z-50 py-1; background: rgb(var(--bg)); }
-  .menu-item { @apply w-full flex items-center gap-2 px-3 h-7 text-[11px] uppercase tracking-[0.06em] text-fg-2 hover:bg-fg hover:text-bg text-left; }
+  .menu { @apply min-w-[200px] z-50 p-1 rounded-xl; background: rgb(var(--bg) / 0.86); backdrop-filter: blur(24px); box-shadow: inset 0 0 0 1px rgb(var(--glass) / 0.12), 0 24px 50px -20px rgb(0 0 0 / 0.7); }
+  .menu-item { @apply w-full flex items-center gap-2 px-3 h-8 rounded-lg font-grot font-medium text-[12.5px] text-fg-2 hover:bg-fg hover:text-bg text-left; }
   .kbd { @apply text-fg-muted; }
   .kbd::before { content: "["; } .kbd::after { content: "]"; }
 
@@ -90,7 +106,8 @@
   .tag-signal { @apply tag bg-signal text-bone; }
 
   /* The MONITOR wordmark: CRT pixel display face with its scanline axis dialled in. */
-  .wordmark { font-family: "Sixtyfour", "Silkscreen", monospace; font-variation-settings: "BLED" 0, "SCAN" -20; letter-spacing: 0.06em; color: rgb(var(--fg)); }
+  .wordmark { font-family: "Archivo", "Helvetica Neue", sans-serif; font-weight: 600; letter-spacing: -0.05em; color: rgb(var(--fg)); }
+  .wordmark sup { font-weight: 500; font-size: 0.42em; letter-spacing: 0; color: rgb(var(--signal)); margin-left: 0.15em; }
   /* Overlay buttons on library cards. */
   .card-btn {
     @apply absolute w-8 h-8 inline-flex items-center justify-center text-bone opacity-0 transition-opacity duration-80
@@ -100,7 +117,7 @@
   .card-btn:hover { @apply bg-bone text-void; }
   .card-btn.on { @apply opacity-100 text-signal; }
   .chip {
-    @apply h-6 px-2 border border-line text-[10px] uppercase tracking-[0.08em] text-fg-2 whitespace-nowrap hover:text-fg hover:border-fg;
+    @apply h-6 px-2.5 rounded-full border border-line font-grot font-semibold text-[11px] text-fg-2 whitespace-nowrap hover:text-fg hover:border-fg;
   }
   .chip.on { @apply bg-fg text-bg border-fg; }
   .screen-readout { @apply font-screen text-[18px] leading-none; color: var(--scr-ink); }

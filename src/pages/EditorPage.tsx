@@ -78,9 +78,9 @@ export function EditorPage() {
   return (
     <>
       {/* Desktop: library+layers column | canvas | params */}
-      {!isMobile && <main className="flex flex-1 min-h-0">
-        <aside className="flex flex-col min-h-0 border-r border-line shrink-0" style={{ width: libW }}>
-          <div className="flex flex-col min-h-0" style={prefs.libraryCollapsed ? { flex: 1 } : { height: Math.min(Math.max(prefs.layersHeight, 120), 600) }}>
+      {!isMobile && <main className="flex flex-1 min-h-0 gap-1 px-2 pb-2">
+        <aside className="flex flex-col min-h-0 shrink-0 gap-2" style={{ width: libW }}>
+          <div className="glass-panel flex flex-col min-h-0" style={prefs.libraryCollapsed ? { flex: 1 } : { height: Math.min(Math.max(prefs.layersHeight, 120), 600) }}>
             <LayersPanel />
           </div>
           {!prefs.libraryCollapsed && (
@@ -90,7 +90,7 @@ export function EditorPage() {
               onDrag={(d) => prefs.set({ layersHeight: Math.max(120, Math.min(600, startH.current + d)) })}
             />
           )}
-          <div className={`flex flex-col min-h-0 border-t border-line ${prefs.libraryCollapsed ? "" : "flex-1"}`}>
+          <div className={`glass-panel flex flex-col min-h-0 ${prefs.libraryCollapsed ? "" : "flex-1"}`}>
             <LibraryPanel />
           </div>
         </aside>
@@ -100,11 +100,11 @@ export function EditorPage() {
           onStart={() => { startW.current = usePrefs.getState().libraryWidth; }}
           onDrag={(d) => prefs.set({ libraryWidth: Math.max(260, Math.min(640, startW.current + d)) })}
         />
-        <section className="flex-1 min-w-0 flex flex-col min-h-0">
+        <section className="glass-panel flex-1 min-w-0 flex flex-col min-h-0">
           <div className="flex-1 min-h-0"><Viewport /></div>
           <Transport />
         </section>
-        <aside className="w-[300px] xl:w-[320px] shrink-0 border-l border-line flex flex-col min-h-0"><Inspector /></aside>
+        <aside className="glass-panel w-[300px] xl:w-[320px] shrink-0 flex flex-col min-h-0"><Inspector /></aside>
       </main>}
 
       {/* Phone / small tablet: canvas on top, tabbed panels below (view & export first). */}

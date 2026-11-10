@@ -36,7 +36,7 @@ export function TopBar() {
   const ed = useEditor.getState();
 
   return (
-    <header className="relative grid grid-cols-[1fr_auto_1fr] items-center h-11 hair-b shrink-0 px-2">
+    <header className="relative grid grid-cols-[1fr_auto_1fr] items-center h-14 shrink-0 px-3">
       <div className="flex items-center min-w-0">
         <button className="icon-btn w-9 h-9 mr-1" onClick={() => ui.open({ type: "about" })} title="About MONITOR — ARMGDN LABS">
           <Symbol className="h-6" />
@@ -76,9 +76,9 @@ export function TopBar() {
       </div>
 
       <button className="flex items-baseline gap-3 px-2 select-none" onClick={() => ui.open({ type: "about" })} title="MONITOR by ARMGDN // LABS">
-        <span className="wordmark text-[17px] sm:text-[19px] leading-none">MONITOR</span>
-        <span className="hidden sm:inline font-serif text-[11px] uppercase tracking-[0.28em] text-fg-2 leading-none">
-          <i className="normal-case tracking-normal text-fg-muted mr-1.5">by</i>ARMGDN <span className="text-fg-muted">//</span> LABS
+        <span className="wordmark text-[24px] leading-none">Monitor.<sup>(fx)</sup></span>
+        <span className="hidden sm:inline font-serif text-[11px] uppercase tracking-[0.32em] text-fg-2 leading-none">
+          <i className="normal-case tracking-normal text-fg-muted mr-1.5">by</i>ARMGDN <span className="text-fg-muted">·</span> LABS
         </span>
       </button>
 

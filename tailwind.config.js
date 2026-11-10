@@ -4,7 +4,7 @@ const v = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
-    borderRadius: { none: "0", DEFAULT: "0", full: "9999px" },
+    borderRadius: { none: "0", sm: "6px", DEFAULT: "10px", md: "10px", lg: "14px", xl: "18px", "2xl": "22px", full: "9999px" },
     extend: {
       colors: {
         bg: v("bg"),
@@ -17,6 +17,7 @@ export default {
       },
       fontFamily: {
         serif: ["Tinos", "Times New Roman", "serif"],
+        grot: ["Archivo", "Helvetica Neue", "Arial", "sans-serif"],
         mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
         pixel: ["Silkscreen", "JetBrains Mono", "monospace"],
         screen: ["VT323", "JetBrains Mono", "monospace"],
