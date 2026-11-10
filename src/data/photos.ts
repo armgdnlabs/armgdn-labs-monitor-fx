@@ -297,7 +297,7 @@ export interface Photo {
   name: string;
 }
 
-const UTM = "utm_source=armgdn-labs-monitor-fx&utm_medium=referral";
+const UTM = "utm_source=armgdn-monitor&utm_medium=referral";
 
 export const PHOTOS: Photo[] = [];
 export const PHOTO_TAGS: string[] = [];

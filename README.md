@@ -16,7 +16,7 @@ An open-source, browser-based FX engine for images and video. **Load media → s
 
 ## Open it
 
-**https://armgdnlabs.github.io/armgdn-labs-monitor-fx/** runs in any WebGL 2 browser. Nothing to install. Every push to `main` redeploys it.
+**https://armgdnlabs.github.io/monitor/** runs in any WebGL 2 browser. Nothing to install. Every push to `main` redeploys it.
 
 ## Run it locally (only for development)
 

@@ -5,7 +5,7 @@
 import type { PresetSnapshot } from "../effects/presets";
 
 export const NEWSLETTER_URL: string | undefined = import.meta.env.VITE_NEWSLETTER_URL;
-export const REPO_URL = "https://github.com/armgdnlabs/armgdn-labs-monitor-fx";
+export const REPO_URL = "https://github.com/armgdnlabs/monitor";
 
 /** POST {name, email} as JSON to the configured list endpoint (Buttondown, Formspree, a worker…). */
 export async function subscribeNewsletter(name: string, email: string): Promise<"sent" | "local"> {
