@@ -35,7 +35,7 @@
     "type": "git",
     "url": "https://github.com/armgdnlabs/monitor.git"
   },
-  "homepage": "https://armgdnlabs.github.io/monitor/",
+  "homepage": "https://armgdnlabs.github.io/labs/monitor/",
   "keywords": [
     "webgl",
     "shaders",

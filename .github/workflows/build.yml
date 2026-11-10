@@ -1,0 +1,18 @@
+name: Build
+# MONITOR is served by the ARMGDN site at /labs/monitor/ (armgdnlabs/armgdnlabs.github.io builds it).
+# This only checks that every push still type-checks and builds.
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
